@@ -5,18 +5,11 @@
 #include "resource.h"
 #include <ShellAPI.h>
 #include "SkinFrame.h"
-
 #include "MainWnd.h"
 #include "PopWnd.h"
 
 void InitResource()
-{	
-	HINSTANCE hDll=::LoadLibrary(_T("DllRes_d.dll"));
-	if(hDll)
-	{
-		CPaintManagerUI::SetResourceDll(hDll);
-	}
-
+{
 	// 资源类型
 #ifdef _DEBUG
 	CPaintManagerUI::SetResourceType(UILIB_FILE);
@@ -48,7 +41,9 @@ void InitResource()
 		{
 			strResourcePath += _T("skin\\");
 			CPaintManagerUI::SetResourcePath(strResourcePath.GetData());
-			CPaintManagerUI::SetResourceZip(_T("skin.zip"), true);
+			// 加密
+			CPaintManagerUI::SetResourceZip(_T("duidemo.zip"), true, _T("duilib_ultimate"));
+			//CPaintManagerUI::SetResourceZip(_T("duidemo_pwd.zip"), true);
 			// 加载资源管理器
 			CResourceManager::GetInstance()->LoadResource(_T("res.xml"), NULL);
 			break;
@@ -57,7 +52,6 @@ void InitResource()
 		{
 			strResourcePath += _T("skin\\duidemo\\");
 			CPaintManagerUI::SetResourcePath(strResourcePath.GetData());
-
 			HRSRC hResource = ::FindResource(CPaintManagerUI::GetResourceDll(), _T("IDR_ZIPRES"), _T("ZIPRES"));
 			if( hResource != NULL ) {
 				DWORD dwSize = 0;
@@ -79,29 +73,35 @@ void InitResource()
 	// 注册控件
 	REGIST_DUICONTROL(CCircleProgressUI);
 	REGIST_DUICONTROL(CChartViewUI);
+	REGIST_DUICONTROL(CWndUI);
 }
 
 int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPSTR /*lpCmdLine*/, int nCmdShow)
 {
+	// COM
 	HRESULT Hr = ::CoInitialize(NULL);
 	if( FAILED(Hr) ) return 0;
+	// OLE
 	HRESULT hRes = ::OleInitialize(NULL);
 	// 初始化UI管理器
 	CPaintManagerUI::SetInstance(hInstance);
 	// 初始化资源
 	InitResource();
-
-	CDemoFrame* pFrame = new CDemoFrame();
-	if( pFrame == NULL ) return 0;
-	pFrame->Create(NULL, _T("duilib使用例子集锦（By Troy）"), UI_WNDSTYLE_FRAME, 0L, 0, 0, 800, 572);
-	pFrame->CenterWindow();
-	ShowWindow(*pFrame, SW_SHOW);
+	// 创建主窗口
+	CMainWnd* pMainWnd = new CMainWnd();
+	if( pMainWnd == NULL ) return 0;
+	pMainWnd->Create(NULL, _T("duilib使用例子集锦（By Troy）"), UI_WNDSTYLE_FRAME, 0L, 0, 0, 800, 572);
+	pMainWnd->CenterWindow();
+	// 消息循环
 	CPaintManagerUI::MessageLoop();
-	delete pFrame;
-	pFrame = NULL;
+	// 销毁窗口
+	delete pMainWnd;
+	pMainWnd = NULL;
+	// 销毁资源管理器
 	CResourceManager::GetInstance()->Release();
-
+	// OLE
 	OleUninitialize();
+	// COM
 	::CoUninitialize();
 	return 0;
 }

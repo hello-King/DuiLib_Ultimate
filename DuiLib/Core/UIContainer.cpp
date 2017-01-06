@@ -8,7 +8,7 @@ namespace DuiLib
 	//
 	IMPLEMENT_DUICONTROL(CContainerUI)
 
-	CContainerUI::CContainerUI()
+		CContainerUI::CContainerUI()
 		: m_iChildPadding(0),
 		m_iChildAlign(DT_LEFT),
 		m_iChildVAlign(DT_TOP),
@@ -190,7 +190,7 @@ namespace DuiLib
 		m_iChildPadding = iPadding;
 		NeedUpdate();
 	}
-	
+
 	UINT CContainerUI::GetChildAlign() const
 	{
 		return m_iChildAlign;
@@ -637,7 +637,7 @@ namespace DuiLib
 		}
 		return rc;
 	}
-	
+
 	void CContainerUI::Move(SIZE szOffset, bool bNeedInvalidate)
 	{
 		CControlUI::Move(szOffset, bNeedInvalidate);
@@ -898,8 +898,6 @@ namespace DuiLib
 
 		int nParentWidth = m_rcItem.right - m_rcItem.left;
 		int nParentHeight = m_rcItem.bottom - m_rcItem.top;
-		if(sz.cx <= 0) sz.cx = nParentWidth;
-		if(sz.cy <= 0) sz.cy = nParentHeight;
 
 		UINT uAlign = pControl->GetFloatAlign();
 		if(uAlign != 0) {

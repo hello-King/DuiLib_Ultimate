@@ -1,13 +1,6 @@
 #include "StdAfx.h"
 #include <zmouse.h>
 
-DECLARE_HANDLE(HZIP);	// An HZIP identifies a zip file that has been opened
-typedef DWORD ZRESULT;
-#define OpenZip OpenZipU
-#define CloseZip(hz) CloseZipU(hz)
-extern HZIP OpenZipU(void *z,unsigned int len,DWORD flags);
-extern ZRESULT CloseZipU(HZIP hz);
-
 namespace DuiLib {
 
 	/////////////////////////////////////////////////////////////////////////////////////
@@ -193,6 +186,7 @@ namespace DuiLib {
 	HINSTANCE CPaintManagerUI::m_hResourceInstance = NULL;
 	CDuiString CPaintManagerUI::m_pStrResourcePath;
 	CDuiString CPaintManagerUI::m_pStrResourceZip;
+	CDuiString CPaintManagerUI::m_pStrResourceZipPwd;  //Garfield 20160325 带密码zip包解密
 	HANDLE CPaintManagerUI::m_hResourceZip = NULL;
 	bool CPaintManagerUI::m_bCachedResourceZip = true;
 	int CPaintManagerUI::m_nResType = UILIB_FILE;
@@ -301,10 +295,7 @@ namespace DuiLib {
 		for( int i = 0; i < m_aDelayedCleanup.GetSize(); i++ ) delete static_cast<CControlUI*>(m_aDelayedCleanup[i]);
 		for( int i = 0; i < m_aAsyncNotify.GetSize(); i++ ) delete static_cast<TNotifyUI*>(m_aAsyncNotify[i]);
 		m_mNameHash.Resize(0);
-		if( m_pRoot != NULL ) {
-			delete m_pRoot;
-			m_pRoot = NULL;
-		}
+		if( m_pRoot != NULL ) delete m_pRoot;
 
 		::DeleteObject(m_ResInfo.m_DefaultFontInfo.hFont);
 		RemoveAllFonts();
@@ -326,23 +317,16 @@ namespace DuiLib {
 		if( m_hbmpBackground != NULL ) ::DeleteObject(m_hbmpBackground);
 		if( m_hDcPaint != NULL ) ::ReleaseDC(m_hWndPaint, m_hDcPaint);
 		m_aPreMessages.Remove(m_aPreMessages.Find(this));
-
+		// 销毁拖拽图片
+		if( m_hDragBitmap != NULL ) ::DeleteObject(m_hDragBitmap);
+		//卸载GDIPlus
+		Gdiplus::GdiplusShutdown(m_gdiplusToken);
+		delete m_pGdiplusStartupInput;
 		// DPI管理对象
 		if (m_pDPI != NULL) {
 			delete m_pDPI;
 			m_pDPI = NULL;
 		}
-
-		// 销毁拖拽图片
-		if( m_hDragBitmap != NULL ) {
-			::DeleteObject(m_hDragBitmap);
-			m_hDragBitmap = NULL;
-		}
-		RevokeDragDrop(m_hWndPaint);
-
-		//卸载GDIPlus
-		Gdiplus::GdiplusShutdown( m_gdiplusToken );
-		delete m_pGdiplusStartupInput;
 	}
 
 	void CPaintManagerUI::Init(HWND hWnd, LPCTSTR pstrName)
@@ -416,6 +400,11 @@ namespace DuiLib {
 		return m_pStrResourceZip;
 	}
 
+	const CDuiString& CPaintManagerUI::GetResourceZipPwd()  //Garfield 20160325 带密码zip包解密
+	{
+		return m_pStrResourceZipPwd;
+	}
+	
 	bool CPaintManagerUI::IsCachedResourceZip()
 	{
 		return m_bCachedResourceZip;
@@ -449,7 +438,7 @@ namespace DuiLib {
 		if( cEnd != _T('\\') && cEnd != _T('/') ) m_pStrResourcePath += _T('\\');
 	}
 
-	void CPaintManagerUI::SetResourceZip(LPVOID pVoid, unsigned int len)
+	void CPaintManagerUI::SetResourceZip(LPVOID pVoid, unsigned int len, LPCTSTR password)
 	{
 		if( m_pStrResourceZip == _T("membuffer") ) return;
 		if( m_bCachedResourceZip && m_hResourceZip != NULL ) {
@@ -457,11 +446,21 @@ namespace DuiLib {
 			m_hResourceZip = NULL;
 		}
 		m_pStrResourceZip = _T("membuffer");
+		m_bCachedResourceZip = true;
+		m_pStrResourceZipPwd = password;  //Garfield 20160325 带密码zip包解密
 		if( m_bCachedResourceZip ) 
-			m_hResourceZip = (HANDLE)OpenZip(pVoid, len, 3);
+		{
+#ifdef UNICODE
+			char* pwd = w2a((wchar_t*)password);
+			m_hResourceZip = (HANDLE)OpenZip(pVoid, len, pwd);
+			if(pwd) delete[] pwd;
+#else
+			m_hResourceZip = (HANDLE)OpenZip(pVoid, len, password);
+#endif
+		}
 	}
 
-	void CPaintManagerUI::SetResourceZip(LPCTSTR pStrPath, bool bCachedResourceZip)
+	void CPaintManagerUI::SetResourceZip(LPCTSTR pStrPath, bool bCachedResourceZip, LPCTSTR password)
 	{
 		if( m_pStrResourceZip == pStrPath && m_bCachedResourceZip == bCachedResourceZip ) return;
 		if( m_bCachedResourceZip && m_hResourceZip != NULL ) {
@@ -470,10 +469,17 @@ namespace DuiLib {
 		}
 		m_pStrResourceZip = pStrPath;
 		m_bCachedResourceZip = bCachedResourceZip;
+		m_pStrResourceZipPwd = password;
 		if( m_bCachedResourceZip ) {
 			CDuiString sFile = CPaintManagerUI::GetResourcePath();
 			sFile += CPaintManagerUI::GetResourceZip();
-			m_hResourceZip = (HANDLE)OpenZip((void*)sFile.GetData(), 0, 2);
+#ifdef UNICODE
+			char* pwd = w2a((wchar_t*)password);
+			m_hResourceZip = (HANDLE)OpenZip(sFile.GetData(), pwd);
+			if(pwd) if(pwd) delete[] pwd;
+#else
+			m_hResourceZip = (HANDLE)OpenZip(sFile.GetData(), password);
+#endif
 		}
 	}
 	
@@ -1957,6 +1963,7 @@ namespace DuiLib {
 		{
 			CRichEditUI* pT = static_cast<CRichEditUI*>((*richEditList)[i]);
 			pT->SetFont(pT->GetFont());
+
 		}
 	}
 
@@ -3645,11 +3652,15 @@ namespace DuiLib {
 
 	bool CPaintManagerUI::InitDragDrop()
 	{
-		//AddRef();
+		AddRef();
+
 		if(FAILED(RegisterDragDrop(m_hWndPaint, this))) //calls addref
 		{
+			DWORD dwError = GetLastError();
 			return false;
 		}
+		else Release(); //i decided to AddRef explicitly after new
+
 		FORMATETC ftetc={0};
 		ftetc.cfFormat = CF_BITMAP;
 		ftetc.dwAspect = DVASPECT_CONTENT;

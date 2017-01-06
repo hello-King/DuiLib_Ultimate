@@ -116,6 +116,7 @@ LRESULT CALLBACK CShadowUI::ParentProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPAR
 
 	CShadowUI *pThis = GetShadowMap()[hwnd];
 	if (pThis->m_bIsDisableShadow) {
+
 #pragma warning(disable: 4312)	// temporrarily disable the type_cast warning in Win32
 		// Call the default(original) window procedure for other messages or messages processed but not returned
 		return ((WNDPROC)pThis->m_OriParentProc)(hwnd, uMsg, wParam, lParam);
@@ -123,14 +124,20 @@ LRESULT CALLBACK CShadowUI::ParentProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPAR
 	}
 	switch(uMsg)
 	{
+	case WM_ACTIVATEAPP:
+	case WM_NCACTIVATE:
+		{
+			::SetWindowPos(pThis->m_hWnd, hwnd, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_NOREDRAW);
+			break;
+		}
 	case WM_WINDOWPOSCHANGED:
 		RECT WndRect;
 		GetWindowRect(hwnd, &WndRect);
 		if (pThis->m_bIsImageMode) {
-			SetWindowPos(pThis->m_hWnd, 0, WndRect.left - pThis->m_nSize, WndRect.top - pThis->m_nSize, 0, 0, SWP_NOSIZE | SWP_NOACTIVATE);
+			SetWindowPos(pThis->m_hWnd, hwnd, WndRect.left - pThis->m_nSize, WndRect.top - pThis->m_nSize, 0, 0, SWP_NOSIZE | SWP_NOACTIVATE);
 		}
 		else {
-			SetWindowPos(pThis->m_hWnd, 0, WndRect.left + pThis->m_nxOffset - pThis->m_nSize, WndRect.top + pThis->m_nyOffset - pThis->m_nSize, 0, 0, SWP_NOSIZE | SWP_NOACTIVATE);
+			SetWindowPos(pThis->m_hWnd, hwnd, WndRect.left + pThis->m_nxOffset - pThis->m_nSize, WndRect.top + pThis->m_nyOffset - pThis->m_nSize, 0, 0, SWP_NOSIZE | SWP_NOACTIVATE);
 		}
 		break;
 	case WM_MOVE:
@@ -139,18 +146,14 @@ LRESULT CALLBACK CShadowUI::ParentProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPAR
 			RECT WndRect;
 			GetWindowRect(hwnd, &WndRect);
 			if (pThis->m_bIsImageMode) {
-				SetWindowPos(pThis->m_hWnd, 0, WndRect.left - pThis->m_nSize, WndRect.top - pThis->m_nSize, 0, 0, SWP_NOSIZE | SWP_NOACTIVATE);
+				SetWindowPos(pThis->m_hWnd, hwnd, WndRect.left - pThis->m_nSize, WndRect.top - pThis->m_nSize, 0, 0, SWP_NOSIZE | SWP_NOACTIVATE);
 			}
 			else {
-				SetWindowPos(pThis->m_hWnd, 0, WndRect.left + pThis->m_nxOffset - pThis->m_nSize, WndRect.top + pThis->m_nyOffset - pThis->m_nSize, 0, 0, SWP_NOSIZE | SWP_NOACTIVATE);
+				SetWindowPos(pThis->m_hWnd, hwnd, WndRect.left + pThis->m_nxOffset - pThis->m_nSize, WndRect.top + pThis->m_nyOffset - pThis->m_nSize, 0, 0, SWP_NOSIZE | SWP_NOACTIVATE);
 			}
 		}
 		break;
-	case WM_NCACTIVATE:
-		{
-			SetWindowPos(pThis->m_hWnd, 0, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
-			break;
-		}
+
 	case WM_SIZE:
 		if(pThis->m_Status & SS_ENABLED)
 		{
@@ -605,7 +608,7 @@ bool CShadowUI::IsDisableShadow() const {
 
 bool CShadowUI::SetSize(int NewSize)
 {
-	if(NewSize > 50 || NewSize < -50)
+	if(NewSize > 35 || NewSize < -35)
 		return false;
 
 	m_nSize = (signed char)NewSize;
@@ -616,7 +619,7 @@ bool CShadowUI::SetSize(int NewSize)
 
 bool CShadowUI::SetSharpness(unsigned int NewSharpness)
 {
-	if(NewSharpness > 20)
+	if(NewSharpness > 35)
 		return false;
 
 	m_nSharpness = (unsigned char)NewSharpness;
@@ -638,8 +641,8 @@ bool CShadowUI::SetDarkness(unsigned int NewDarkness)
 
 bool CShadowUI::SetPosition(int NewXOffset, int NewYOffset)
 {
-	if(NewXOffset > 20 || NewXOffset < -20 ||
-		NewYOffset > 20 || NewYOffset < -20)
+	if(NewXOffset > 35 || NewXOffset < -35 ||
+		NewYOffset > 35 || NewYOffset < -35)
 		return false;
 	
 	m_nxOffset = (signed char)NewXOffset;

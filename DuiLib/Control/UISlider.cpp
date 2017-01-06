@@ -52,16 +52,25 @@ namespace DuiLib
 
 	RECT CSliderUI::GetThumbRect() const
 	{
+		RECT rcThumb = {0};
+		SIZE m_szThumb = CSliderUI::m_szThumb;
+		if (GetManager() != NULL) {
+			GetManager()->GetDPIObj()->Scale(&m_szThumb);
+		}
 		if( m_bHorizontal ) {
 			int left = m_rcItem.left + (m_rcItem.right - m_rcItem.left - m_szThumb.cx) * (m_nValue - m_nMin) / (m_nMax - m_nMin);
 			int top = (m_rcItem.bottom + m_rcItem.top - m_szThumb.cy) / 2;
-			return CDuiRect(left, top, left + m_szThumb.cx, top + m_szThumb.cy); 
+			rcThumb = CDuiRect(left, top, left + m_szThumb.cx, top + m_szThumb.cy); 
 		}
 		else {
 			int left = (m_rcItem.right + m_rcItem.left - m_szThumb.cx) / 2;
 			int top = m_rcItem.bottom - m_szThumb.cy - (m_rcItem.bottom - m_rcItem.top - m_szThumb.cy) * (m_nValue - m_nMin) / (m_nMax - m_nMin);
-			return CDuiRect(left, top, left + m_szThumb.cx, top + m_szThumb.cy); 
+			rcThumb = CDuiRect(left, top, left + m_szThumb.cx, top + m_szThumb.cy); 
 		}
+		if(m_pManager != NULL) {
+			//m_pManager->GetDPIObj()->Scale(&rcThumb);
+		}
+		return rcThumb;
 	}
 
 	LPCTSTR CSliderUI::GetThumbImage() const
@@ -268,6 +277,9 @@ namespace DuiLib
 		rcThumb.top -= m_rcItem.top;
 		rcThumb.right -= m_rcItem.left;
 		rcThumb.bottom -= m_rcItem.top;
+
+		GetManager()->GetDPIObj()->ScaleBack(&rcThumb);
+
 		if( (m_uButtonState & UISTATE_CAPTURED) != 0 ) {
 			if( !m_sThumbPushedImage.IsEmpty() ) {
 				m_sImageModify.Empty();
