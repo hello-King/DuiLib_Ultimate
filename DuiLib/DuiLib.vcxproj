@@ -657,7 +657,7 @@
       </HeaderFileName>
     </Midl>
     <ClCompile>
-      <Optimization>MinSpace</Optimization>
+      <Optimization>Disabled</Optimization>
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;UILIB_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
@@ -933,6 +933,7 @@
     </Bscmake>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Control\UIIPAddressEx.cpp" />
     <ClCompile Include="Control\UIRollText.cpp" />
     <ClCompile Include="Control\UIAnimation.cpp" />
     <ClCompile Include="Control\UIColorPalette.cpp" />
@@ -944,6 +945,7 @@
     <ClCompile Include="Control\UIIPAddress.cpp" />
     <ClCompile Include="Control\UIListEx.cpp" />
     <ClCompile Include="Control\UIMenu.cpp" />
+    <ClCompile Include="Control\UIRing.cpp" />
     <ClCompile Include="Core\ControlFactory.cpp" />
     <ClCompile Include="Core\UIResourceManager.cpp" />
     <ClCompile Include="Layout\UIAnimationTabLayout.cpp" />
@@ -970,43 +972,19 @@
     <ClCompile Include="Utils\DragDropImpl.cpp" />
     <ClCompile Include="Utils\TrayIcon.cpp" />
     <ClCompile Include="Utils\UIShadow.cpp" />
+    <ClCompile Include="Utils\unzip.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='DebugA|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='ReleaseA|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='SDebugA|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='SDebug|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='SReleaseA|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='SRelease|Win32'">NotUsing</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="Utils\WinImplBase.cpp" />
     <ClCompile Include="Utils\UIDelegate.cpp" />
     <ClCompile Include="Utils\Utils.cpp" />
-    <ClCompile Include="Utils\XUnzip.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-      </PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-      </PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='SDebug|Win32'">
-      </PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='SDebug|x64'">
-      </PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='SDebugA|Win32'">
-      </PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='SDebugA|x64'">
-      </PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='DebugA|Win32'">
-      </PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='DebugA|x64'">
-      </PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-      </PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-      </PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='SRelease|Win32'">
-      </PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='SRelease|x64'">
-      </PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='SReleaseA|Win32'">
-      </PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='SReleaseA|x64'">
-      </PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='ReleaseA|Win32'">
-      </PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='ReleaseA|x64'">
-      </PrecompiledHeader>
-    </ClCompile>
     <ClCompile Include="Core\UIBase.cpp" />
     <ClCompile Include="Core\UIContainer.cpp" />
     <ClCompile Include="Core\UIControl.cpp" />
@@ -1038,6 +1016,7 @@
     <ClCompile Include="Control\UIWebBrowser.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Control\UIIPAddressEx.h" />
     <ClInclude Include="Control\UIRollText.h" />
     <ClInclude Include="Control\UIAnimation.h" />
     <ClInclude Include="Control\UIColorPalette.h" />
@@ -1049,6 +1028,7 @@
     <ClInclude Include="Control\UIIPAddress.h" />
     <ClInclude Include="Control\UIListEx.h" />
     <ClInclude Include="Control\UIMenu.h" />
+    <ClInclude Include="Control\UIRing.h" />
     <ClInclude Include="Core\ControlFactory.h" />
     <ClInclude Include="Core\UIResourceManager.h" />
     <ClInclude Include="Layout\UIAnimationTabLayout.h" />
@@ -1063,6 +1043,7 @@
     <ClInclude Include="Utils\TrayIcon.h" />
     <ClInclude Include="Utils\UIDelegate.h" />
     <ClInclude Include="Utils\UIShadow.h" />
+    <ClInclude Include="Utils\unzip.h" />
     <ClInclude Include="Utils\Utils.h" />
     <ClInclude Include="Utils\VersionHelpers.h" />
     <ClInclude Include="Utils\WebBrowserEventHandler.h" />

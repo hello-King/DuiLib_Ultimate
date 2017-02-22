@@ -20,6 +20,7 @@ namespace DuiLib
 #endif
 		INNER_REGISTER_DUICONTROL(CGroupBoxUI);
 		INNER_REGISTER_DUICONTROL(CIPAddressUI);
+		INNER_REGISTER_DUICONTROL(CIPAddressExUI);
 		INNER_REGISTER_DUICONTROL(CLabelUI);
 		INNER_REGISTER_DUICONTROL(CListUI);
 		INNER_REGISTER_DUICONTROL(CListHeaderUI);
@@ -52,6 +53,7 @@ namespace DuiLib
 		INNER_REGISTER_DUICONTROL(CListTextExtElementUI);
 		INNER_REGISTER_DUICONTROL(CHotKeyUI);
 		INNER_REGISTER_DUICONTROL(CFadeButtonUI);
+		INNER_REGISTER_DUICONTROL(CRingUI);
 	}
 
 	CControlFactory::~CControlFactory()
@@ -60,6 +62,7 @@ namespace DuiLib
 
 	CControlUI* CControlFactory::CreateControl(CDuiString strClassName)
 	{
+		strClassName.MakeLower();
 		MAP_DUI_CTRATECLASS::iterator iter = m_mapControl.find(strClassName);
 		if ( iter == m_mapControl.end()) {
 			return NULL;
@@ -71,6 +74,7 @@ namespace DuiLib
 
 	void CControlFactory::RegistControl(CDuiString strClassName, CreateClass pFunc)
 	{
+		strClassName.MakeLower();
 		m_mapControl.insert(MAP_DUI_CTRATECLASS::value_type(strClassName, pFunc));
 	}
 

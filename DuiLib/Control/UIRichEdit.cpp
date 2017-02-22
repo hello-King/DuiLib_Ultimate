@@ -189,9 +189,10 @@ LONG DYtoHimetricY(LONG dy, LONG yPerInch)
 HRESULT InitDefaultCharFormat(CRichEditUI* re, CHARFORMAT2W* pcf, HFONT hfont) 
 {
     memset(pcf, 0, sizeof(CHARFORMAT2W));
-    LOGFONT lf;
-    if( !hfont )
-        hfont = re->GetManager()->GetFont(re->GetFont());
+	if(hfont == NULL) {
+		hfont = re->GetManager()->GetFont(re->GetFont());
+	}
+	LOGFONT lf;
     ::GetObject(hfont, sizeof(LOGFONT), &lf);
 
     DWORD dwColor = re->GetTextColor();
@@ -271,7 +272,7 @@ CTxtWinHost::~CTxtWinHost()
 
 BOOL CTxtWinHost::Init(CRichEditUI *re, const CREATESTRUCT *pcs)
 {
-    IUnknown *pUnk;
+    IUnknown *pUnk = NULL;
     HRESULT hr;
 
     m_re = re;
@@ -311,7 +312,7 @@ BOOL CTxtWinHost::Init(CRichEditUI *re, const CREATESTRUCT *pcs)
 
     fInplaceActive = TRUE;
 
-	PCreateTextServices TextServicesProc;
+	PCreateTextServices TextServicesProc = NULL;
 #ifdef _UNICODE		
 	HMODULE hmod = LoadLibrary(_T("Msftedit.dll"));
 #else
@@ -320,7 +321,7 @@ BOOL CTxtWinHost::Init(CRichEditUI *re, const CREATESTRUCT *pcs)
 	if (hmod) {
 		TextServicesProc = (PCreateTextServices)GetProcAddress(hmod,"CreateTextServices");
 	}
-	if (TextServicesProc) {
+	if (TextServicesProc != NULL) {
 		HRESULT hr = TextServicesProc(NULL, this, &pUnk);
 	}
 
@@ -1074,7 +1075,7 @@ CRichEditUI::~CRichEditUI()
 {
     if( m_pTwh ) {
         m_pTwh->Release();
-        GetManager()->RemoveMessageFilter(this);
+        m_pManager->RemoveMessageFilter(this);
     }
 }
 
@@ -1206,7 +1207,7 @@ void CRichEditUI::SetEnabled(bool bEnabled)
 	if (m_bEnabled == bEnabled) return;
 
 	if( m_pTwh ) {
-		m_pTwh->SetColor(bEnabled ? m_dwTextColor : GetManager()->GetDefaultDisabledColor());
+		m_pTwh->SetColor(bEnabled ? m_dwTextColor : m_pManager->GetDefaultDisabledColor());
 	}
 	
 	CContainerUI::SetEnabled(bEnabled);
@@ -1516,7 +1517,7 @@ DWORD CRichEditUI::GetSelectionCharFormat(CHARFORMAT2 &cf) const
 
 bool CRichEditUI::SetSelectionCharFormat(CHARFORMAT2 &cf)
 {
-	if(GetManager()->IsLayered()) {
+	if(m_pManager->IsLayered()) {
 		CRenderEngine::CheckAlphaColor(cf.crTextColor);
 		CRenderEngine::CheckAlphaColor(cf.crBackColor);
 	}
@@ -1731,9 +1732,9 @@ void CRichEditUI::DoInit()
         m_pTwh->GetTextServices()->TxSendMessage(EM_SETLANGOPTIONS, 0, 0, &lResult);
 		m_pTwh->GetTextServices()->TxSendMessage(EM_SETEVENTMASK, 0, ENM_DROPFILES|ENM_LINK|ENM_CHANGE, &lResult);
         m_pTwh->OnTxInPlaceActivate(NULL);
-        GetManager()->AddMessageFilter(this);
+        m_pManager->AddMessageFilter(this);
 		if (!m_bEnabled) {
-			m_pTwh->SetColor(GetManager()->GetDefaultDisabledColor());
+			m_pTwh->SetColor(m_pManager->GetDefaultDisabledColor());
 		}
     }
 	
@@ -1745,7 +1746,7 @@ HRESULT CRichEditUI::TxSendMessage(UINT msg, WPARAM wparam, LPARAM lparam, LRESU
     if( m_pTwh ) {
         if( msg == WM_KEYDOWN && TCHAR(wparam) == VK_RETURN ) {
             if( !m_bWantReturn || (::GetKeyState(VK_CONTROL) < 0 && !m_bWantCtrlReturn) ) {
-                if( GetManager() != NULL ) GetManager()->SendNotify((CControlUI*)this, DUI_MSGTYPE_RETURN);
+                if( m_pManager != NULL ) m_pManager->SendNotify((CControlUI*)this, DUI_MSGTYPE_RETURN);
                 return S_OK;
             }
         }
@@ -2391,7 +2392,7 @@ void CRichEditUI::DoPaint(HDC hDC, const RECT& rcPaint)
 		UINT uTextAlign = GetTipValueAlign();
 		if(IsMultiLine()) uTextAlign |= DT_TOP;
 		else uTextAlign |= DT_VCENTER;
-		CRenderEngine::DrawText(hDC, GetManager(), rc, sTipValue, dwTextColor, m_iFont, uTextAlign);
+		CRenderEngine::DrawText(hDC, m_pManager, rc, sTipValue, dwTextColor, m_iFont, uTextAlign);
 	}
 }
 
@@ -2563,15 +2564,15 @@ LRESULT CRichEditUI::MessageHandler(UINT uMsg, WPARAM wParam, LPARAM lParam, boo
 
 		//创建一个弹出式菜单
 		HMENU hPopMenu = CreatePopupMenu();
-		AppendMenu(hPopMenu, 0, ID_RICH_UNDO, L"撤销(&U)");
-		AppendMenu(hPopMenu, 0, ID_RICH_REDO, L"重做(&R)");
-		AppendMenu(hPopMenu, MF_SEPARATOR, 0, L"");
-		AppendMenu(hPopMenu, 0, ID_RICH_CUT, L"剪切(&X)");
-		AppendMenu(hPopMenu, 0, ID_RICH_COPY, L"复制(&C)");
-		AppendMenu(hPopMenu, 0, ID_RICH_PASTE, L"粘帖(&V)");
-		AppendMenu(hPopMenu, 0, ID_RICH_CLEAR, L"清空(&L)");
-		AppendMenu(hPopMenu, MF_SEPARATOR, 0, L"");
-		AppendMenu(hPopMenu, 0, ID_RICH_SELECTALL, L"全选(&A)");
+		AppendMenu(hPopMenu, 0, ID_RICH_UNDO, _T("撤销(&U)"));
+		AppendMenu(hPopMenu, 0, ID_RICH_REDO, _T("重做(&R)"));
+		AppendMenu(hPopMenu, MF_SEPARATOR, 0, _T(""));
+		AppendMenu(hPopMenu, 0, ID_RICH_CUT, _T("剪切(&X)"));
+		AppendMenu(hPopMenu, 0, ID_RICH_COPY, _T("复制(&C)"));
+		AppendMenu(hPopMenu, 0, ID_RICH_PASTE, _T("粘帖(&V)"));
+		AppendMenu(hPopMenu, 0, ID_RICH_CLEAR, _T("清空(&L)"));
+		AppendMenu(hPopMenu, MF_SEPARATOR, 0, _T(""));
+		AppendMenu(hPopMenu, 0, ID_RICH_SELECTALL, _T("全选(&A)"));
 
 		//初始化菜单项
 		UINT uUndo = (CanUndo() ? 0 : MF_GRAYED);

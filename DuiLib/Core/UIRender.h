@@ -42,12 +42,15 @@ namespace DuiLib {
 		static TImageInfo* LoadImage(LPCTSTR pStrImage, LPCTSTR type = NULL, DWORD mask = 0, HINSTANCE instance = NULL);
 		static TImageInfo* LoadImage(UINT nID, LPCTSTR type = NULL, DWORD mask = 0, HINSTANCE instance = NULL);
 
+		static Gdiplus::Image*	GdiplusLoadImage(LPCTSTR pstrPath);
+		static Gdiplus::Image* GdiplusLoadImage(LPVOID pBuf, size_t dwSize);
+
 		static bool DrawIconImageString(HDC hDC, CPaintManagerUI* pManager, const RECT& rcItem, const RECT& rcPaint, \
 			LPCTSTR pStrImage, LPCTSTR pStrModify = NULL);
 		static bool MakeFitIconDest(const RECT& rcControl,const CDuiSize& szIcon, const CDuiString& sAlign, RECT& rcDest);
 
 		static void DrawText(HDC hDC, CPaintManagerUI* pManager, RECT& rc, LPCTSTR pstrText,DWORD dwTextColor, \
-			int iFont, UINT uStyle, DWORD dwTextBKColor, BOOL bTransparent);
+			int iFont, UINT uStyle, DWORD dwTextBKColor);
 
 		static void DrawImage(HDC hDC, HBITMAP hBitmap, const RECT& rc, const RECT& rcPaint, \
 			const RECT& rcBmpPart, const RECT& rcCorners, bool bAlpha, BYTE uFade = 255, 

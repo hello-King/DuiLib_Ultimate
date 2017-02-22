@@ -42,6 +42,7 @@
 #include <gdiplus.h>
 
 #include "Utils/Utils.h"
+#include "Utils/unzip.h"
 #include "Utils/VersionHelpers.h"
 #include "Core/UIMarkup.h"
 #include "Utils/observer_impl_base.h"
@@ -92,6 +93,7 @@
 #include "Control/UIRichEdit.h"
 #include "Control/UIDateTime.h"
 #include "Control/UIIPAddress.h"
+#include "Control/UIIPAddressEx.h"
 
 #include "Control/UIActiveX.h"
 #include "Control/UIWebBrowser.h"
@@ -104,6 +106,7 @@
 #include "Control/UIListEx.h"
 #include "Control/UIHotKey.h"
 #include "Control/UIFadeButton.h"
+#include "Control/UIRing.h"
 
 #pragma comment( lib, "comctl32.lib" )
 #pragma comment( lib, "GdiPlus.lib" )

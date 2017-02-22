@@ -17,45 +17,6 @@
 #endif
 
 ///////////////////////////////////////////////////////////////////////////////////////
-DECLARE_HANDLE(HZIP);	// An HZIP identifies a zip file that has been opened
-typedef DWORD ZRESULT;
-typedef struct
-{ 
-	int index;                 // index of this file within the zip
-	char name[MAX_PATH];       // filename within the zip
-	DWORD attr;                // attributes, as in GetFileAttributes.
-	FILETIME atime,ctime,mtime;// access, create, modify filetimes
-	long comp_size;            // sizes of item, compressed and uncompressed. These
-	long unc_size;             // may be -1 if not yet known (e.g. being streamed in)
-} ZIPENTRY;
-typedef struct
-{ 
-	int index;                 // index of this file within the zip
-	TCHAR name[MAX_PATH];      // filename within the zip
-	DWORD attr;                // attributes, as in GetFileAttributes.
-	FILETIME atime,ctime,mtime;// access, create, modify filetimes
-	long comp_size;            // sizes of item, compressed and uncompressed. These
-	long unc_size;             // may be -1 if not yet known (e.g. being streamed in)
-} ZIPENTRYW;
-#define OpenZip OpenZipU
-#define CloseZip(hz) CloseZipU(hz)
-extern HZIP OpenZipU(void *z,unsigned int len,DWORD flags);
-extern ZRESULT CloseZipU(HZIP hz);
-#ifdef _UNICODE
-#define ZIPENTRY ZIPENTRYW
-#define GetZipItem GetZipItemW
-#define FindZipItem FindZipItemW
-#else
-#define GetZipItem GetZipItemA
-#define FindZipItem FindZipItemA
-#endif
-extern ZRESULT GetZipItemA(HZIP hz, int index, ZIPENTRY *ze);
-extern ZRESULT GetZipItemW(HZIP hz, int index, ZIPENTRYW *ze);
-extern ZRESULT FindZipItemA(HZIP hz, const TCHAR *name, bool ic, int *index, ZIPENTRY *ze);
-extern ZRESULT FindZipItemW(HZIP hz, const TCHAR *name, bool ic, int *index, ZIPENTRYW *ze);
-extern ZRESULT UnzipItem(HZIP hz, int index, void *dst, unsigned int len, DWORD flags);
-///////////////////////////////////////////////////////////////////////////////////////
-
 namespace DuiLib {
 	static int g_iFontID = MAX_FONT_ID;
 
@@ -352,9 +313,19 @@ namespace DuiLib {
 				}
 				else {
 					sFile += CPaintManagerUI::GetResourceZip();
+					CDuiString sFilePwd = CPaintManagerUI::GetResourceZipPwd();  //Garfield 20160325 带密码zip包解密
 					HZIP hz = NULL;
 					if( CPaintManagerUI::IsCachedResourceZip() ) hz = (HZIP)CPaintManagerUI::GetResourceZipHandle();
-					else hz = OpenZip((void*)sFile.GetData(), 0, 2);
+					else
+					{
+#ifdef UNICODE
+						char* pwd = w2a((wchar_t*)sFilePwd.GetData());
+						hz = OpenZip(sFile.GetData(), pwd);
+						if(pwd) delete[] pwd;
+#else
+						hz = OpenZip(sFile.GetData(), sFilePwd.GetData());
+#endif
+					}
 					if( hz == NULL ) break;
 					ZIPENTRY ze; 
 					int i; 
@@ -362,7 +333,7 @@ namespace DuiLib {
 					dwSize = ze.unc_size;
 					if( dwSize == 0 ) break;
 					pData = new BYTE[ dwSize ];
-					int res = UnzipItem(hz, i, pData, dwSize, 3);
+					int res = UnzipItem(hz, i, pData, dwSize);
 					if( res != 0x00000000 && res != 0x00000600) {
 						delete[] pData;
 						pData = NULL;
@@ -528,8 +499,16 @@ namespace DuiLib {
 					HZIP hz = NULL;
 					if( CPaintManagerUI::IsCachedResourceZip() ) 
 						hz = (HZIP)CPaintManagerUI::GetResourceZipHandle();
-					else 
-						hz = OpenZip((void*)sFile.GetData(), 0, 2);
+					else {
+						CDuiString sFilePwd = CPaintManagerUI::GetResourceZipPwd();
+#ifdef UNICODE
+						char* pwd = w2a((wchar_t*)sFilePwd.GetData());
+						hz = OpenZip((void*)sFile.GetData(), pwd);
+						if(pwd) delete[] pwd;
+#else
+						hz = OpenZip((void*)sFile.GetData(), sFilePwd.GetData());
+#endif
+					}
 					if( hz == NULL ) break;
 					ZIPENTRY ze; 
 					int i; 
@@ -617,6 +596,113 @@ namespace DuiLib {
 		return pImg;
 	}
 #endif//USE_XIMAGE_EFFECT
+
+	Gdiplus::Image* CRenderEngine::GdiplusLoadImage(LPCTSTR pstrPath)
+	{
+		LPBYTE pData = NULL;
+		DWORD dwSize = 0;
+
+		do 
+		{
+			CDuiString sFile = CPaintManagerUI::GetResourcePath();
+			if( CPaintManagerUI::GetResourceZip().IsEmpty() ) {
+				sFile += pstrPath;
+				HANDLE hFile = ::CreateFile(sFile.GetData(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, \
+					FILE_ATTRIBUTE_NORMAL, NULL);
+				if( hFile == INVALID_HANDLE_VALUE ) break;
+				dwSize = ::GetFileSize(hFile, NULL);
+				if( dwSize == 0 ) break;
+
+				DWORD dwRead = 0;
+				pData = new BYTE[ dwSize ];
+				::ReadFile( hFile, pData, dwSize, &dwRead, NULL );
+				::CloseHandle( hFile );
+
+				if( dwRead != dwSize ) {
+					delete[] pData;
+					pData = NULL;
+					break;
+				}
+			}
+			else {
+				sFile += CPaintManagerUI::GetResourceZip();
+				HZIP hz = NULL;
+				if( CPaintManagerUI::IsCachedResourceZip() ) hz = (HZIP)CPaintManagerUI::GetResourceZipHandle();
+				else {
+					CDuiString sFilePwd = CPaintManagerUI::GetResourceZipPwd();
+#ifdef UNICODE
+					char* pwd = w2a((wchar_t*)sFilePwd.GetData());
+					hz = OpenZip(sFile.GetData(), pwd);
+					if(pwd) delete[] pwd;
+#else
+					hz = OpenZip(sFile.GetData(), sFilePwd.GetData());
+#endif
+				}
+				if( hz == NULL ) break;
+				ZIPENTRY ze; 
+				int i; 
+				if( FindZipItem(hz, pstrPath, true, &i, &ze) != 0 ) break;
+				dwSize = ze.unc_size;
+				if( dwSize == 0 ) break;
+				pData = new BYTE[ dwSize ];
+				int res = UnzipItem(hz, i, pData, dwSize);
+				if( res != 0x00000000 && res != 0x00000600) {
+					delete[] pData;
+					pData = NULL;
+					if( !CPaintManagerUI::IsCachedResourceZip() ) CloseZip(hz);
+					break;
+				}
+				if( !CPaintManagerUI::IsCachedResourceZip() ) CloseZip(hz);
+			}
+
+		} while (0);
+
+		while (!pData)
+		{
+			//读不到图片, 则直接去读取bitmap.m_lpstr指向的路径
+			HANDLE hFile = ::CreateFile(pstrPath, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+			if( hFile == INVALID_HANDLE_VALUE ) break;
+			dwSize = ::GetFileSize(hFile, NULL);
+			if( dwSize == 0 ) break;
+
+			DWORD dwRead = 0;
+			pData = new BYTE[ dwSize ];
+			::ReadFile( hFile, pData, dwSize, &dwRead, NULL );
+			::CloseHandle( hFile );
+
+			if( dwRead != dwSize ) {
+				delete[] pData;
+				pData = NULL;
+			}
+			break;
+		}
+
+		Gdiplus::Image* pImage = NULL;
+		if(pData != NULL) {
+			pImage = GdiplusLoadImage(pData, dwSize);
+			delete pData;
+			pData = NULL;
+		}
+		return pImage;
+	}
+
+	Gdiplus::Image* CRenderEngine::GdiplusLoadImage( LPVOID pBuf,size_t dwSize )
+	{
+		HGLOBAL hMem = ::GlobalAlloc(GMEM_FIXED, dwSize);
+		BYTE* pMem = (BYTE*)::GlobalLock(hMem);
+		memcpy(pMem, pBuf, dwSize);
+		IStream* pStm = NULL;
+		::CreateStreamOnHGlobal(hMem, TRUE, &pStm);
+		Gdiplus::Image *pImg = Gdiplus::Image::FromStream(pStm);
+		if(!pImg || pImg->GetLastStatus() != Gdiplus::Ok)
+		{
+			pStm->Release();
+			::GlobalUnlock(hMem);
+			return 0;
+		}
+		return pImg;
+	}
+
 	void CRenderEngine::FreeImage(TImageInfo* bitmap, bool bDelete)
 	{
 		if (bitmap == NULL) return;
@@ -849,16 +935,12 @@ namespace DuiLib {
 	}
 
 	void CRenderEngine::DrawText(HDC hDC, CPaintManagerUI* pManager, RECT& rc, LPCTSTR pstrText,DWORD dwTextColor, \
-		int iFont, UINT uStyle, DWORD dwTextBKColor, BOOL bTransparent)
+		int iFont, UINT uStyle, DWORD dwTextBKColor)
 	{
+		ASSERT(::GetObjectType(hDC)==OBJ_DC || ::GetObjectType(hDC)==OBJ_MEMDC);
 		if( pstrText == NULL || pManager == NULL ) return;
-		if(bTransparent) ::SetBkMode(hDC, TRANSPARENT);
-		else ::SetBkMode(hDC, OPAQUE);
-		::SetBkColor(hDC, RGB(GetBValue(dwTextBKColor), GetGValue(dwTextBKColor), GetRValue(dwTextBKColor)));
-		::SetTextColor(hDC, RGB(GetBValue(dwTextColor), GetGValue(dwTextColor), GetRValue(dwTextColor)));
-		HFONT hOldFont = (HFONT)::SelectObject(hDC, pManager->GetFont(iFont));
-		::DrawText(hDC, pstrText, -1, &rc, uStyle | DT_NOPREFIX);
-		::SelectObject(hDC, hOldFont);
+		DrawColor(hDC, rc, dwTextBKColor);
+		DrawText(hDC, pManager, rc, pstrText, dwTextColor, iFont, uStyle);
 	}
 
 	void CRenderEngine::DrawImage(HDC hDC, HBITMAP hBitmap, const RECT& rc, const RECT& rcPaint,
@@ -1313,7 +1395,6 @@ namespace DuiLib {
 	bool CRenderEngine::DrawImageInfo(HDC hDC, CPaintManagerUI* pManager, const RECT& rcItem, const RECT& rcPaint, const TDrawInfo* pDrawInfo, HINSTANCE instance)
 	{
 		if( pManager == NULL || hDC == NULL || pDrawInfo == NULL ) return false;
-
 		RECT rcDest = rcItem;
 		if( pDrawInfo->rcDest.left != 0 || pDrawInfo->rcDest.top != 0 ||
 			pDrawInfo->rcDest.right != 0 || pDrawInfo->rcDest.bottom != 0 ) {
@@ -1324,8 +1405,10 @@ namespace DuiLib {
 				rcDest.bottom = rcItem.top + pDrawInfo->rcDest.bottom;
 				if( rcDest.bottom > rcItem.bottom ) rcDest.bottom = rcItem.bottom;
 		}
-		return DuiLib::DrawImage(hDC, pManager, rcItem, rcPaint, pDrawInfo->sImageName, pDrawInfo->sResType, rcDest,\
+		bool bRet = DuiLib::DrawImage(hDC, pManager, rcItem, rcPaint, pDrawInfo->sImageName, pDrawInfo->sResType, rcDest, \
 			pDrawInfo->rcSource, pDrawInfo->rcCorner, pDrawInfo->dwMask, pDrawInfo->uFade, pDrawInfo->bHole, pDrawInfo->bTiledX, pDrawInfo->bTiledY, instance);
+		
+		return bRet;
 	}
 
 	bool CRenderEngine::DrawImageString(HDC hDC, CPaintManagerUI* pManager, const RECT& rcItem, const RECT& rcPaint, LPCTSTR pStrImage, LPCTSTR pStrModify, HINSTANCE instance)
@@ -1374,8 +1457,14 @@ namespace DuiLib {
 		{
 			TRIVERTEX triv[2] = 
 			{
-				{ rcPaint.left, rcPaint.top, GetBValue(dwFirst) << 8, GetGValue(dwFirst) << 8, GetRValue(dwFirst) << 8, 0xFF00 },
-				{ rcPaint.right, rcPaint.bottom, GetBValue(dwSecond) << 8, GetGValue(dwSecond) << 8, GetRValue(dwSecond) << 8, 0xFF00 }
+				{ rcPaint.left, rcPaint.top, 
+				static_cast<COLOR16>(GetBValue(dwFirst) << 8),
+				static_cast<COLOR16>(GetGValue(dwFirst) << 8),
+				static_cast<COLOR16>(GetRValue(dwFirst) << 8), 0xFF00 },
+				{ rcPaint.right, rcPaint.bottom, 
+				static_cast<COLOR16>(GetBValue(dwSecond) << 8),
+				static_cast<COLOR16>(GetGValue(dwSecond) << 8),
+				static_cast<COLOR16>(GetRValue(dwSecond) << 8), 0xFF00 }
 			};
 			GRADIENT_RECT grc = { 0, 1 };
 			lpGradientFill(hPaintDC, triv, 2, &grc, 1, bVertical ? GRADIENT_FILL_RECT_V : GRADIENT_FILL_RECT_H);
@@ -1579,10 +1668,25 @@ namespace DuiLib {
 			::SetBkMode(hDC, TRANSPARENT);
 			::SetTextColor(hDC, RGB(GetBValue(dwTextColor), GetGValue(dwTextColor), GetRValue(dwTextColor)));
 			HFONT hOldFont = (HFONT)::SelectObject(hDC, pManager->GetFont(iFont));
-			::DrawText(hDC, pstrText, -1, &rc, uStyle);
+			int fonticonpos = CDuiString(pstrText).Find(_T("&#x"));
+			if (fonticonpos != -1) {
+				CDuiString strUnicode = CDuiString(pstrText).Mid(fonticonpos + 3);
+				if (strUnicode.GetLength() > 4) strUnicode = strUnicode.Mid(0,4);
+				if (strUnicode.Right(1).CompareNoCase(_T(" ")) == 0) {
+					strUnicode = strUnicode.Mid(0, strUnicode.GetLength() - 1);
+				}
+				if (strUnicode.Right(1).CompareNoCase(_T(";")) == 0) {
+					strUnicode = strUnicode.Mid(0,strUnicode.GetLength()-1);
+				}
+				wchar_t wch[2] = { 0 };
+				wch[0] = static_cast<wchar_t>(_tcstol(strUnicode.GetData(), 0, 16));
+				::DrawTextW(hDC, wch, -1, &rc, uStyle);
+			}
+			else {
+				::DrawText(hDC, pstrText, -1, &rc, uStyle);
+			}
 			::SelectObject(hDC, hOldFont);
 		}
-
 	}
 
 	void CRenderEngine::DrawHtmlText(HDC hDC, CPaintManagerUI* pManager, RECT& rc, LPCTSTR pstrText, DWORD dwTextColor, RECT* prcLinks, CDuiString* sLinks, int& nLinkRects, UINT uStyle)
