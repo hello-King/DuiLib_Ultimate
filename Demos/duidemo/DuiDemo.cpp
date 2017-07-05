@@ -42,8 +42,8 @@ void InitResource()
 			strResourcePath += _T("skin\\");
 			CPaintManagerUI::SetResourcePath(strResourcePath.GetData());
 			// 加密
-			CPaintManagerUI::SetResourceZip(_T("duidemo.zip"), true, _T("duilib_ultimate"));
-			//CPaintManagerUI::SetResourceZip(_T("duidemo_pwd.zip"), true);
+			CPaintManagerUI::SetResourceZip(_T("duidemo_pwd.zip"), true, _T("duilib_ultimate"));
+			//CPaintManagerUI::SetResourceZip(_T("duidemo.zip"), true);
 			// 加载资源管理器
 			CResourceManager::GetInstance()->LoadResource(_T("res.xml"), NULL);
 			break;
@@ -98,11 +98,12 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPSTR /*l
 	// 销毁窗口
 	delete pMainWnd;
 	pMainWnd = NULL;
-	// 销毁资源管理器
-	CResourceManager::GetInstance()->Release();
+	// 清理资源
+	CPaintManagerUI::Term();
 	// OLE
 	OleUninitialize();
 	// COM
 	::CoUninitialize();
+
 	return 0;
 }

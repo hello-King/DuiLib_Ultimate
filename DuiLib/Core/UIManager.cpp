@@ -234,7 +234,8 @@ namespace DuiLib {
 		m_trh(0),
 		m_bDragMode(false),
 		m_hDragBitmap(NULL),
-		m_pDPI(NULL)
+		m_pDPI(NULL),
+		m_nTooltipHoverTime(400UL)
 	{
 		if (m_SharedResInfo.m_DefaultFontInfo.sFontName.IsEmpty())
 		{
@@ -407,7 +408,7 @@ namespace DuiLib {
 		return m_pStrResourceZip;
 	}
 
-	const CDuiString& CPaintManagerUI::GetResourceZipPwd()  //Garfield 20160325 带密码zip包解密
+	const CDuiString& CPaintManagerUI::GetResourceZipPwd()
 	{
 		return m_pStrResourceZipPwd;
 	}
@@ -460,7 +461,10 @@ namespace DuiLib {
 #ifdef UNICODE
 			char* pwd = w2a((wchar_t*)password);
 			m_hResourceZip = (HANDLE)OpenZip(pVoid, len, pwd);
-			if(pwd) delete[] pwd;
+			if(pwd) {
+				delete[] pwd;
+				pwd = NULL;
+			}
 #else
 			m_hResourceZip = (HANDLE)OpenZip(pVoid, len, password);
 #endif
@@ -579,6 +583,15 @@ namespace DuiLib {
 	HWND CPaintManagerUI::GetTooltipWindow() const
 	{
 		return m_hwndTooltip;
+	}
+	int CPaintManagerUI::GetHoverTime() const
+	{
+		return m_nTooltipHoverTime;
+	}
+
+	void CPaintManagerUI::SetHoverTime(int iTime)
+	{
+		m_nTooltipHoverTime = iTime;
 	}
 
 	LPCTSTR CPaintManagerUI::GetName() const
@@ -1046,6 +1059,7 @@ namespace DuiLib {
 								if( !pControl->IsFloat() ) pControl->SetPos(pControl->GetPos(), true);
 								else pControl->SetPos(pControl->GetRelativePos(), true);
 							}
+							bNeedSizeMsg = true;
 						}
 						// We'll want to notify the window when it is first initialized
 						// with the correct layout. The window form would take the time
@@ -1328,7 +1342,7 @@ namespace DuiLib {
 					tme.cbSize = sizeof(TRACKMOUSEEVENT);
 					tme.dwFlags = TME_HOVER | TME_LEAVE;
 					tme.hwndTrack = m_hWndPaint;
-					tme.dwHoverTime = m_hwndTooltip == NULL ? 400UL : (DWORD) ::SendMessage(m_hwndTooltip, TTM_GETDELAYTIME, TTDT_INITIAL, 0L);
+					tme.dwHoverTime = m_hwndTooltip == NULL ? m_nTooltipHoverTime : (DWORD) ::SendMessage(m_hwndTooltip, TTM_GETDELAYTIME, TTDT_INITIAL, 0L);
 					_TrackMouseEvent(&tme);
 					m_bMouseTracking = true;
 				}
@@ -1391,7 +1405,9 @@ namespace DuiLib {
 					dragSrcHelper.InitializeFromBitmap(hBitmap, ptDrag, rc, pdobj); //will own the bmp
 					DWORD dwEffect;
 					HRESULT hr = ::DoDragDrop(pdobj, pdsrc, DROPEFFECT_COPY | DROPEFFECT_MOVE, &dwEffect);
+					if(dwEffect )
 					pdsrc->Release();
+					delete pdsrc;
 					pdobj->Release();
 					m_bDragMode = false;
 					break;
@@ -1906,6 +1922,68 @@ namespace DuiLib {
 
 	void CPaintManagerUI::Term()
 	{
+		// 销毁资源管理器
+		CResourceManager::GetInstance()->Release();
+		CControlFactory::GetInstance()->Release();
+		CMenuWnd::DestroyMenu();
+
+		// 清理共享资源
+		// 图片
+		TImageInfo* data;
+		for( int i = 0; i< m_SharedResInfo.m_ImageHash.GetSize(); i++ ) {
+			if(LPCTSTR key = m_SharedResInfo.m_ImageHash.GetAt(i)) {
+				data = static_cast<TImageInfo*>(m_SharedResInfo.m_ImageHash.Find(key, false));
+				if (data) {
+					CRenderEngine::FreeImage(data);
+					data = NULL;
+				}
+			}
+		}
+		m_SharedResInfo.m_ImageHash.RemoveAll();
+		// 字体
+		TFontInfo* pFontInfo;
+		for( int i = 0; i< m_SharedResInfo.m_CustomFonts.GetSize(); i++ ) {
+			if(LPCTSTR key = m_SharedResInfo.m_CustomFonts.GetAt(i)) {
+				pFontInfo = static_cast<TFontInfo*>(m_SharedResInfo.m_CustomFonts.Find(key, false));
+				if (pFontInfo) {
+					::DeleteObject(pFontInfo->hFont);
+					delete pFontInfo;
+					pFontInfo = NULL;
+				}
+			}
+		}
+		m_SharedResInfo.m_CustomFonts.RemoveAll();
+		// 默认字体
+		if(m_SharedResInfo.m_DefaultFontInfo.hFont != NULL) {
+			::DeleteObject(m_SharedResInfo.m_DefaultFontInfo.hFont);
+		}
+		// 样式
+		CDuiString* pStyle;
+		for( int i = 0; i< m_SharedResInfo.m_StyleHash.GetSize(); i++ ) {
+			if(LPCTSTR key = m_SharedResInfo.m_StyleHash.GetAt(i)) {
+				pStyle = static_cast<CDuiString*>(m_SharedResInfo.m_StyleHash.Find(key, false));
+				if (pStyle) {
+					delete pStyle;
+					pStyle = NULL;
+				}
+			}
+		}
+		m_SharedResInfo.m_StyleHash.RemoveAll();
+
+		// 样式
+		CDuiString* pAttr;
+		for( int i = 0; i< m_SharedResInfo.m_AttrHash.GetSize(); i++ ) {
+			if(LPCTSTR key = m_SharedResInfo.m_AttrHash.GetAt(i)) {
+				pAttr = static_cast<CDuiString*>(m_SharedResInfo.m_AttrHash.Find(key, false));
+				if (pAttr) {
+					delete pAttr;
+					pAttr = NULL;
+				}
+			}
+		}
+		m_SharedResInfo.m_AttrHash.RemoveAll();
+
+		// 关闭ZIP
 		if( m_bCachedResourceZip && m_hResourceZip != NULL ) {
 			CloseZip((HZIP)m_hResourceZip);
 			m_hResourceZip = NULL;
@@ -2651,8 +2729,10 @@ namespace DuiLib {
 				}
 				if (hz == NULL) break;
 				ZIPENTRY ze;
-				int i;
-				if (FindZipItem(hz, pstrPath, true, &i, &ze) != 0) break;
+				int i = 0;
+				CDuiString key = pstrPath;
+				key.Replace(_T("\\"), _T("/"));
+				if (FindZipItem(hz, key, true, &i, &ze) != 0) break;
 				dwSize = ze.unc_size;
 				if (dwSize == 0) break;
 				pData = new BYTE[dwSize];
@@ -2689,6 +2769,8 @@ namespace DuiLib {
 		}
 		DWORD nFonts;
 		HANDLE hFont = ::AddFontMemResourceEx(pData, dwSize, NULL, &nFonts);
+		delete[] pData;
+		pData = NULL;
 		m_aFonts.Add(hFont);
 	}
 	HFONT CPaintManagerUI::GetFont(int id)
@@ -2955,7 +3037,7 @@ namespace DuiLib {
 		if( bitmap == NULL || bitmap[0] == _T('\0') ) return NULL;
 
 		TImageInfo* data = NULL;
-		if( type != NULL ) {
+		if( type != NULL && lstrlen(type) > 0) {
 			if( isdigit(*bitmap) ) {
 				LPTSTR pstr = NULL;
 				int iIndex = _tcstol(bitmap, &pstr, 10);
