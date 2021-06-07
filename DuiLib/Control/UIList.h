@@ -47,6 +47,7 @@ namespace DuiLib {
 	{
 	public:
 		virtual LPCTSTR GetItemText(CControlUI* pList, int iItem, int iSubItem) = 0;
+		virtual DWORD GetItemTextColor(CControlUI* pList, int iItem, int iSubItem, int iState) = 0;// iState：0-正常、1-激活、2-选择、3-禁用
 	};
 
 	class IListOwnerUI
@@ -227,7 +228,7 @@ namespace DuiLib {
 		BOOL SortItems(PULVCompareFunc pfnCompare, UINT_PTR dwData);
 
 		virtual BOOL CheckColumEditable(int nColum) { return FALSE; };
-		virtual CEditUI* GetEditUI() { return NULL; };
+		virtual CRichEditUI* GetEditUI() { return NULL; };
 		virtual BOOL CheckColumComboBoxable(int nColum) { return FALSE; };
 		virtual CComboBoxUI* GetComboBoxUI() { return NULL; };
 
@@ -238,8 +239,9 @@ namespace DuiLib {
 	protected:
 		bool m_bFixedScrollbar;
 		bool m_bScrollSelect;
-		int m_iCurSel;
 		bool m_bMultiSel;
+		int m_iCurSel;
+		int m_iFirstSel;
 		CStdPtrArray m_aSelItems;
 		int m_iCurSelActivate;  // 双击的列
 		int m_iExpandedItem;
@@ -247,7 +249,6 @@ namespace DuiLib {
 		CListBodyUI* m_pList;
 		CListHeaderUI* m_pHeader;
 		TListInfoUI m_ListInfo;
-
 	};
 
 	/////////////////////////////////////////////////////////////////////////////////////
@@ -281,6 +282,7 @@ namespace DuiLib {
 		DECLARE_DUICONTROL(CListHeaderUI)
 	public:
 		CListHeaderUI();
+		virtual ~CListHeaderUI();
 
 		LPCTSTR GetClass() const;
 		LPVOID GetInterface(LPCTSTR pstrName);
@@ -292,6 +294,8 @@ namespace DuiLib {
 		void SetScaleHeader(bool bIsScale);
 		bool IsScaleHeader() const;
 
+		void DoInit();
+		void DoPostPaint(HDC hDC, const RECT& rcPaint);
 	private:
 		bool m_bIsScaleHeader;
 	};
@@ -424,7 +428,7 @@ namespace DuiLib {
 
 		void DoEvent(TEventUI& event);
 		SIZE EstimateSize(SIZE szAvailable);
-		void DoPaint(HDC hDC, const RECT& rcPaint);
+		bool DoPaint(HDC hDC, const RECT& rcPaint, CControlUI* pStopControl);
 
 		void DrawItemText(HDC hDC, const RECT& rcItem);
 	};
@@ -447,6 +451,9 @@ namespace DuiLib {
 		LPCTSTR GetText(int iIndex) const;
 		void SetText(int iIndex, LPCTSTR pstrText);
 
+		DWORD GetTextColor(int iIndex) const;
+		void SetTextColor(int iIndex, DWORD dwTextColor);
+
 		void SetOwner(CControlUI* pOwner);
 		CDuiString* GetLinkContent(int iIndex);
 
@@ -463,6 +470,7 @@ namespace DuiLib {
 		int m_nHoverLink;
 		IListUI* m_pOwner;
 		CStdPtrArray m_aTexts;
+		CStdPtrArray m_aTextColors;
 	};
 
 	/////////////////////////////////////////////////////////////////////////////////////
@@ -497,7 +505,7 @@ namespace DuiLib {
 
 		void DoEvent(TEventUI& event);
 		void SetAttribute(LPCTSTR pstrName, LPCTSTR pstrValue);
-		void DoPaint(HDC hDC, const RECT& rcPaint);
+		bool DoPaint(HDC hDC, const RECT& rcPaint, CControlUI* pStopControl);
 
 		virtual void DrawItemText(HDC hDC, const RECT& rcItem);    
 		virtual void DrawItemBk(HDC hDC, const RECT& rcItem);

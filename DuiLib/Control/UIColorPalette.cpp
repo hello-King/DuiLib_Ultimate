@@ -32,7 +32,7 @@ namespace DuiLib {
 		float G = (float)(GetGValue(clr) / 255.0f);
 		float B = (float)(GetBValue(clr) / 255.0f);
 
-		float H, S, L;
+		float H = 0, S = 0, L = 0;
 
 		float fMin = min(R, min(G, B));		//Min. value of RGB
 		float fMax = max(R, max(G, B));		//Max. value of RGB
@@ -214,7 +214,7 @@ namespace DuiLib {
 	{
 		m_MemDc = CreateCompatibleDC(GetManager()->GetPaintDC());
 		m_hMemBitmap = CreateCompatibleBitmap(GetManager()->GetPaintDC(), 400, 360);
-		HBITMAP pOldBit = (HBITMAP)SelectObject(m_MemDc, m_hMemBitmap);
+		SelectObject(m_MemDc, m_hMemBitmap);
 
 		::GetObject(m_hMemBitmap, sizeof(m_bmInfo), &m_bmInfo);
 		DWORD dwSize = m_bmInfo.bmHeight * m_bmInfo.bmWidthBytes;

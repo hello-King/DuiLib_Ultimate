@@ -55,9 +55,6 @@ enum MenuItemDefaultInfo
 
 };
 
-#define WM_MENUCLICK WM_USER + 121  //用来接收按钮单击的消息
-
-
 ///////////////////////////////////////////////
 class MenuMenuReceiverImplBase;
 class MenuMenuObserverImplBase
@@ -263,7 +260,7 @@ public:
     virtual bool SetItemIndex(CControlUI* pControl, int iIndex);
     virtual bool Remove(CControlUI* pControl);
 
-	SIZE EstimateSize(SIZE szAvailable) override;
+	SIZE EstimateSize(SIZE szAvailable);
 
 	void SetAttribute(LPCTSTR pstrName, LPCTSTR pstrValue) ;
 };
@@ -346,7 +343,7 @@ public:
 
     LPCTSTR GetClass() const;
     LPVOID GetInterface(LPCTSTR pstrName);
-    void DoPaint(HDC hDC, const RECT& rcPaint);
+    bool DoPaint(HDC hDC, const RECT& rcPaint, CControlUI* pStopControl);
 	void DrawItemText(HDC hDC, const RECT& rcItem);
 	SIZE EstimateSize(SIZE szAvailable);
 

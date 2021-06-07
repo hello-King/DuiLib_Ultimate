@@ -102,7 +102,18 @@ namespace DuiLib
 		if( m_pVerticalScrollBar && m_pVerticalScrollBar->IsVisible() ) {
 			iPosY -= m_pVerticalScrollBar->GetScrollPos();
 		}
-
+		else {
+			// 子控件垂直对其方式
+			if(nAdjustables <= 0) {
+				UINT iChildAlign = GetChildVAlign(); 
+				if (iChildAlign == DT_VCENTER) {
+					iPosY += (szAvailable.cy -cyFixed) / 2;
+				}
+				else if (iChildAlign == DT_BOTTOM) {
+					iPosY += (szAvailable.cy - cyFixed);
+				}
+			}
+		}
 		int iEstimate = 0;
 		int iAdjustable = 0;
 		int cyFixedRemaining = cyFixed;
@@ -126,7 +137,7 @@ namespace DuiLib
 			if (iControlMaxHeight <= 0) iControlMaxHeight = pControl->GetMaxHeight();
 			if (szControlAvailable.cx > iControlMaxWidth) szControlAvailable.cx = iControlMaxWidth;
 			if (szControlAvailable.cy > iControlMaxHeight) szControlAvailable.cy = iControlMaxHeight;
-      cyFixedRemaining = cyFixedRemaining - (rcPadding.top + rcPadding.bottom);
+			cyFixedRemaining = cyFixedRemaining - (rcPadding.top + rcPadding.bottom);
 			if (iEstimate > 1) cyFixedRemaining = cyFixedRemaining - m_iChildPadding;
 			SIZE sz = pControl->EstimateSize(szControlAvailable);
 			if( sz.cy == 0 ) {
@@ -145,9 +156,8 @@ namespace DuiLib
 				cyFixedRemaining -= sz.cy;
 			}
 
-			sz.cx = pControl->GetMaxWidth();
+			sz.cx = MAX(sz.cx, 0);
 			if( sz.cx == 0 ) sz.cx = szAvailable.cx - rcPadding.left - rcPadding.right;
-			if( sz.cx < 0 ) sz.cx = 0;
 			if( sz.cx > szControlAvailable.cx ) sz.cx = szControlAvailable.cx;
 			if( sz.cx < pControl->GetMinWidth() ) sz.cx = pControl->GetMinWidth();
 
@@ -288,7 +298,7 @@ namespace DuiLib
 
 					CDuiRect rcInvalidate = GetThumbRect(true);
 					m_rcNewPos = rc;
-					m_cxyFixed.cy = m_rcNewPos.bottom - m_rcNewPos.top;
+					m_cxyFixed.cy = GetManager()->GetDPIObj()->Scale(m_rcNewPos.bottom - m_rcNewPos.top);
 
 					if( m_bImmMode ) {
 						m_rcItem = m_rcNewPos;

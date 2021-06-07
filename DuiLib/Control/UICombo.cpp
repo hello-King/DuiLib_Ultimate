@@ -60,6 +60,7 @@ namespace DuiLib {
 
 		// Position the popup window in absolute space
 		SIZE szDrop = m_pOwner->GetDropBoxSize();
+		RECT rcInset = m_pOwner->GetDropBoxInset();
 		RECT rcOwner = pOwner->GetPos();
 		RECT rc = rcOwner;
 		rc.top = rc.bottom;		// 父窗口left、bottom位置作为弹出窗口起点
@@ -67,7 +68,7 @@ namespace DuiLib {
 		if( szDrop.cx > 0 ) rc.right = rc.left + szDrop.cx;	// 计算弹出窗口宽度
 
 		SIZE szAvailable = { rc.right - rc.left, rc.bottom - rc.top };
-		int cyFixed = 0;
+		int cyFixed = rcInset.top;
 		for( int it = 0; it < pOwner->GetCount(); it++ ) {
 			CControlUI* pControl = static_cast<CControlUI*>(pOwner->GetItemAt(it));
 			if( !pControl->IsVisible() ) continue;
@@ -137,6 +138,7 @@ namespace DuiLib {
 		if( uMsg == WM_CREATE ) {
 			m_pm.SetForceUseSharedRes(true);
 			m_pm.Init(m_hWnd);
+			m_pm.SetLayered(true);
 			// The trick is to add the items to the new container. Their owner gets
 			// reassigned by this operation - which is why it is important to reassign
 			// the items back to the righfull owner/manager when the window closes.
@@ -253,6 +255,7 @@ namespace DuiLib {
 #if(_WIN32_WINNT >= 0x0501)
 	UINT CComboWnd::GetClassStyle() const
 	{
+		return __super::GetClassStyle();
 		if(m_pOwner->IsShowShadow()) {
 			return __super::GetClassStyle();
 
@@ -274,9 +277,11 @@ namespace DuiLib {
 		, m_iCurSel(-1)
 		, m_uButtonState(0)
 		, m_bScrollSelect(true)
+		, m_bShowShadow(false)
 	{
 		m_szDropBox = CDuiSize(0, 150);
 		::ZeroMemory(&m_rcTextPadding, sizeof(m_rcTextPadding));
+		::ZeroMemory(&m_rcDropBox, sizeof(m_rcDropBox));
 
 		m_ListInfo.nColumns = 0;
 		m_ListInfo.nFont = -1;
@@ -311,7 +316,7 @@ namespace DuiLib {
 
 	UINT CComboUI::GetControlFlags() const
 	{
-		return UIFLAG_TABSTOP;
+		return UIFLAG_TABSTOP | UIFLAG_SETCURSOR;
 	}
 
 	void CComboUI::DoInit()
@@ -621,6 +626,15 @@ namespace DuiLib {
 		m_szDropBox = szDropBox;
 	}
 
+	RECT CComboUI::GetDropBoxInset() const
+	{
+		return m_rcDropBox;
+	}
+
+	void CComboUI::SetDropBoxInset(RECT rcDropBox)
+	{
+		m_rcDropBox = rcDropBox;
+	}
 	void CComboUI::SetTextStyle(UINT uStyle)
 	{
 		m_uTextStyle = uStyle;
@@ -1043,6 +1057,15 @@ namespace DuiLib {
 			szDropBoxSize.cy = _tcstol(pstr + 1, &pstr, 10);    ASSERT(pstr);    
 			SetDropBoxSize(szDropBoxSize);
 		}
+		else if( _tcsicmp(pstrName, _T("dropboxinset")) == 0 ) {
+			RECT rcTextPadding = { 0 };
+			LPTSTR pstr = NULL;
+			rcTextPadding.left = _tcstol(pstrValue, &pstr, 10);  ASSERT(pstr);    
+			rcTextPadding.top = _tcstol(pstr + 1, &pstr, 10);    ASSERT(pstr);    
+			rcTextPadding.right = _tcstol(pstr + 1, &pstr, 10);  ASSERT(pstr);    
+			rcTextPadding.bottom = _tcstol(pstr + 1, &pstr, 10); ASSERT(pstr);    
+			SetDropBoxInset(rcTextPadding);
+		}
 		else if( _tcsicmp(pstrName, _T("itemfont")) == 0 ) SetItemFont(_ttoi(pstrValue));
 		else if( _tcsicmp(pstrName, _T("itemalign")) == 0 ) {
 			if( _tcsstr(pstrValue, _T("left")) != NULL ) {
@@ -1148,9 +1171,9 @@ namespace DuiLib {
 		else CContainerUI::SetAttribute(pstrName, pstrValue);
 	}
 
-	void CComboUI::DoPaint(HDC hDC, const RECT& rcPaint)
+	bool CComboUI::DoPaint(HDC hDC, const RECT& rcPaint, CControlUI* pStopControl)
 	{
-		CControlUI::DoPaint(hDC, rcPaint);
+		return CControlUI::DoPaint(hDC, rcPaint, pStopControl);
 	}
 
 	void CComboUI::PaintStatusImage(HDC hDC)
@@ -1207,13 +1230,13 @@ namespace DuiLib {
 		int nLinks = 0;
 		if( IsEnabled() ) {
 			if( m_bShowHtml )
-				CRenderEngine::DrawHtmlText(hDC, m_pManager, rc, sText, m_dwTextColor, NULL, NULL, nLinks, m_uTextStyle);
+				CRenderEngine::DrawHtmlText(hDC, m_pManager, rc, sText, m_dwTextColor, NULL, NULL, nLinks, m_iFont, m_uTextStyle);
 			else
 				CRenderEngine::DrawText(hDC, m_pManager, rc, sText, m_dwTextColor, m_iFont, m_uTextStyle);
 		}
 		else {
 			if( m_bShowHtml )
-				CRenderEngine::DrawHtmlText(hDC, m_pManager, rc, sText, m_dwDisabledTextColor, NULL, NULL, nLinks, m_uTextStyle);
+				CRenderEngine::DrawHtmlText(hDC, m_pManager, rc, sText, m_dwDisabledTextColor, NULL, NULL, nLinks, m_iFont, m_uTextStyle);
 			else
 				CRenderEngine::DrawText(hDC, m_pManager, rc, sText, m_dwDisabledTextColor, m_iFont, m_uTextStyle);
 		}

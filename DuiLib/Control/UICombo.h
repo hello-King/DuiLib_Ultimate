@@ -44,6 +44,8 @@ namespace DuiLib {
 		void SetDropBoxAttributeList(LPCTSTR pstrList);
 		SIZE GetDropBoxSize() const;
 		void SetDropBoxSize(SIZE szDropBox);
+		RECT GetDropBoxInset() const;
+		void SetDropBoxInset(RECT szDropBox);
 
 		UINT GetListType();
 		TListInfoUI* GetListInfo();
@@ -116,7 +118,7 @@ namespace DuiLib {
 		void DoEvent(TEventUI& event);
 		void SetAttribute(LPCTSTR pstrName, LPCTSTR pstrValue);
 
-		void DoPaint(HDC hDC, const RECT& rcPaint);
+		bool DoPaint(HDC hDC, const RECT& rcPaint, CControlUI* pStopControl);
 		void PaintText(HDC hDC);
 		void PaintStatusImage(HDC hDC);
 
@@ -133,6 +135,7 @@ namespace DuiLib {
 		bool	m_bShowShadow;
 		CDuiString m_sDropBoxAttributes;
 		SIZE m_szDropBox;
+		RECT m_rcDropBox;
 		UINT m_uButtonState;
 
 		CDuiString m_sNormalImage;

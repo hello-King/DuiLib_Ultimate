@@ -102,10 +102,10 @@ void CChartViewUI::SetAttribute(LPCTSTR pstrName, LPCTSTR pstrValue)
 	}
 }
 
-void CChartViewUI::DoPaint(HDC hDC, const RECT& rcPaint)
+bool CChartViewUI::DoPaint(HDC hDC, const RECT& rcPaint, CControlUI* pStopControl)
 {
-	if( !::IntersectRect(&m_rcPaint, &rcPaint, &m_rcItem) ) return;
-	CControlUI::DoPaint(hDC, rcPaint);
+	if( !::IntersectRect(&m_rcPaint, &rcPaint, &m_rcItem) ) return true;
+	CControlUI::DoPaint(hDC, rcPaint, pStopControl);
 
 	if (CHARTVIEW_PIE == m_ViewStyle)
 	{
@@ -115,6 +115,8 @@ void CChartViewUI::DoPaint(HDC hDC, const RECT& rcPaint)
 	{
 		DoPaintHistogram(hDC, rcPaint);
 	}
+
+	return true;
 }
 
 void CChartViewUI::DoPaintPie(HDC hDC, const RECT& rcPaint)
@@ -220,7 +222,7 @@ void CChartViewUI::DoPaintPie(HDC hDC, const RECT& rcPaint)
 				if( m_bShowHtml )
 				{
 					CRenderEngine::DrawHtmlText(hDC, m_pManager, rcText, m_items[i].name, clrColor, \
-						NULL, NULL, nLinks, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
+						NULL, NULL, nLinks, m_iFont, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
 				}
 				else
 				{
@@ -310,7 +312,7 @@ void CChartViewUI::DoPaintHistogram(HDC hDC, const RECT& rcPaint)
 			if( m_bShowHtml )
 			{
 				CRenderEngine::DrawHtmlText(hDC, m_pManager, rcText, m_items[i].name, clrColor, \
-					NULL, NULL, nLinks, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+					NULL, NULL, nLinks, m_iFont, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
 			}
 			else
 			{
