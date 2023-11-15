@@ -6,7 +6,7 @@ namespace DuiLib
 {
 	IMPLEMENT_DUICONTROL(CGifAnimUI)
 
-	CGifAnimUI::CGifAnimUI(void)
+		CGifAnimUI::CGifAnimUI(void)
 	{
 		m_pGifImage			=	NULL;
 		m_pPropertyItem		=	NULL;
@@ -160,8 +160,15 @@ namespace DuiLib
 
 	void CGifAnimUI::InitGifImage()
 	{
-		m_pGifImage = CRenderEngine::GdiplusLoadImage(GetBkImage());
+		TImageInfo* pImageInfo = CRenderEngine::GdiplusLoadImage(GetBkImage());
+		if(pImageInfo != NULL) {
+			m_pGifImage = pImageInfo->pImage;
+
+			delete pImageInfo;
+			pImageInfo = NULL;
+		}
 		if ( NULL == m_pGifImage ) return;
+
 		UINT nCount	= 0;
 		nCount	=	m_pGifImage->GetFrameDimensionsCount();
 		GUID* pDimensionIDs	=	new GUID[ nCount ];

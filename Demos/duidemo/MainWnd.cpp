@@ -88,36 +88,42 @@ void CMainWnd::InitWindow()
 	CWebBrowserUI* pBrowser2 = static_cast<CWebBrowserUI*>(m_pm.FindControl(_T("oneclick_browser2")));
 	pBrowser2->SetWebBrowserEventHandler(this);
 	pBrowser1->NavigateUrl(_T("https://www.baidu.com"));
-	pBrowser2->NavigateUrl(_T("https://pbsz.ebank.cmbchina.com/CmbBank_GenShell/UI/GenShellPC/Login/Login.aspx"));
+	pBrowser2->NavigateUrl(_T("https://blog.csdn.net/duisharp/"));
 
-	// 动态创建Combo
-	CComboUI* pFontSize = static_cast<CComboUI*>(m_pm.FindControl(_T("font_size")));
-	if(pFontSize)
+	CLoadingUI* loading = static_cast<CLoadingUI*>(m_pm.FindControl(_T("loading")));
+	loading->Start();
+
+	// 长文字Combo
+	CComboUI* long_text = static_cast<CComboUI*>(m_pm.FindControl(_T("long_text")));
+	if(long_text)
 	{
-		CListLabelElementUI * pElement = new CListLabelElementUI();
-		pElement->SetText(_T("测试长文字"));
-		pElement->SetFixedHeight(30);
-		pElement->SetFixedWidth(120);
-		pFontSize->Add(pElement);
+		for(int i = 0; i < 20; i++) {
+			CListLabelElementUI * pElement = new CListLabelElementUI();
+			pElement->SetText(_T("测试长文字测试长文字测试长文字测试长文字"));
+			pElement->SetFixedHeight(30);
+			long_text->Add(pElement);
+			if(i == 0) pElement->Select(true);
+		}
 	}
 
+	// 动态创建Combo
 	CComboUI* pCombo = new CComboUI();
 	pCombo->SetName(_T("mycombo"));
-	pCombo->SetFixedWidth(80);
+	pCombo->SetFixedWidth(180);
 	pCombo->ApplyAttributeList(m_pm.GetStyle(_T("combo_style")));
 	pCombo->SetAttribute(_T("endellipsis"), _T("true"));
 	pCombo->SetAttribute(_T("itemendellipsis"), _T("true"));
-	CContainerUI* pParent = (CContainerUI*)pFontSize->GetParent();
+	CContainerUI* pParent = (CContainerUI*)long_text->GetParent();
 	pParent->Add(pCombo);
 	if(pCombo)
 	{
 		pCombo->SetFloat(true);
-		pCombo->SetFixedXY(CDuiSize(140,0));
+		pCombo->SetFixedXY(CDuiSize(600,0));
 		pCombo->SetItemFont(2);
 		CListLabelElementUI * pElement = new CListLabelElementUI();
 		pElement->SetText(_T("动态数据动态数据"));
 		pElement->SetFixedHeight(30);
-		pElement->SetFixedWidth(120);
+		pElement->SetFixedWidth(0);
 		pCombo->Add(pElement);
 		pCombo->SelectItem(0);
 	}
@@ -308,7 +314,7 @@ LPCTSTR CMainWnd::QueryControlText(LPCTSTR lpstrId, LPCTSTR lpstrType)
 			return _T("Duilib 使用演示 v1.1");
 		}
 		else if(lstrcmpi(lpstrId, _T("hometext")) == 0) {
-			return _T("{a}演示官网{/a}");
+			return _T("{a}开源官网{/a}");
 		}
 	}
 
@@ -341,28 +347,23 @@ void CMainWnd::Notify(TNotifyUI& msg)
 	}
 	else if(msg.sType == DUI_MSGTYPE_ITEMCLICK) {
 		CListUI* pList = static_cast<CListUI*>(m_pm.FindControl(_T("listview")));
-		CListTextElementUI* pItem = (CListTextElementUI*)msg.pSender;
-		if(pList->GetItemIndex(pItem) != -1) {
-
-			pItem->SetText(0, _T("1111222"));
-		}
 	}
 	else if( msg.sType == _T("showactivex") ) 
 	{
-		if( name.CompareNoCase(_T("ani_flash")) == 0 ) {
-			IShockwaveFlash* pFlash = NULL;
-			CActiveXUI* pActiveX = static_cast<CActiveXUI*>(msg.pSender);
-			pActiveX->GetControl(__uuidof(IShockwaveFlash), (void**)&pFlash);
-			if( pFlash != NULL )  {
-				pFlash->put_WMode( _bstr_t(_T("Transparent") ) );
-				pFlash->put_Movie( _bstr_t(CPaintManagerUI::GetInstancePath() + _T("\\skin\\duidemo\\other\\waterdrop.swf")) );
-				pFlash->DisableLocalSecurity();
-				pFlash->put_AllowScriptAccess(L"always");
-				BSTR response;
-				pFlash->CallFunction(L"<invoke name=\"setButtonText\" returntype=\"xml\"><arguments><string>Click me!</string></arguments></invoke>", &response);
-				pFlash->Release();
-			}  
-		}
+		//if( name.CompareNoCase(_T("ani_flash")) == 0 ) {
+		//	IShockwaveFlash* pFlash = NULL;
+		//	CActiveXUI* pActiveX = static_cast<CActiveXUI*>(msg.pSender);
+		//	pActiveX->GetControl(__uuidof(IShockwaveFlash), (void**)&pFlash);
+		//	if( pFlash != NULL )  {
+		//		pFlash->put_WMode( _bstr_t(_T("Transparent") ) );
+		//		pFlash->put_Movie( _bstr_t(CPaintManagerUI::GetInstancePath() + _T("\\skin\\duidemo\\other\\waterdrop.swf")) );
+		//		pFlash->DisableLocalSecurity();
+		//		pFlash->put_AllowScriptAccess(L"always");
+		//		BSTR response;
+		//		pFlash->CallFunction(L"<invoke name=\"setButtonText\" returntype=\"xml\"><arguments><string>Click me!</string></arguments></invoke>", &response);
+		//		pFlash->Release();
+		//	}  
+		//}
 	}
 	else if( msg.sType == _T("click") )
 	{
@@ -424,6 +425,19 @@ void CMainWnd::Notify(TNotifyUI& msg)
 			}
 			pFontSize->SelectItem(0);
 		}
+	}
+	else if(msg.sType == _T("menu"))
+	{
+		CMenuWnd::GetGlobalContextMenuObserver().SetMenuCheckInfo(&m_MenuInfos);
+
+		if(m_pMenu != NULL) {
+			delete m_pMenu;
+			m_pMenu = NULL;
+		}
+		m_pMenu = new CMenuWnd();
+		CDuiPoint point;
+		::GetCursorPos(&point);
+		m_pMenu->Init(NULL, _T("menu.xml"), point, &m_pm);
 	}
 
 	return WindowImplBase::Notify(msg);

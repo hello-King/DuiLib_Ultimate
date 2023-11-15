@@ -1792,7 +1792,7 @@ err:
 	HRESULT CRichEditUI::TxSendMessage(UINT msg, WPARAM wparam, LPARAM lparam, LRESULT *plresult) const
 	{
 		if( m_pTwh ) {
-			if( msg == WM_KEYDOWN && TCHAR(wparam) == VK_RETURN ) {
+			if( msg == WM_KEYDOWN && wparam == VK_RETURN ) {
 				if( !m_bWantReturn || (::GetKeyState(VK_CONTROL) < 0 && !m_bWantCtrlReturn) ) {
 					if( m_pManager != NULL ) m_pManager->SendNotify((CControlUI*)this, DUI_MSGTYPE_RETURN);
 					return S_OK;
@@ -1861,6 +1861,37 @@ err:
 		}
 	}
 
+    CDuiSize CRichEditUI::GetNaturalSize(LONG width, LONG height)
+    {
+        if (width < 0)
+        {
+            width = 0;
+        }
+        if (height < 0)
+        {
+            height = 0;
+        }
+        CDuiSize sz(0, 0);
+        LONG lWidth = width;
+        LONG lHeight = height;
+        SIZEL szExtent = { -1, -1 };
+
+        if (m_pTwh)
+        {
+            m_pTwh->GetTextServices()->TxGetNaturalSize(
+                DVASPECT_CONTENT,
+                m_pManager->GetPaintDC(),
+                NULL,
+                NULL,
+                TXTNS_FITTOCONTENT,
+                &szExtent,
+                &lWidth,
+                &lHeight);
+        }
+        sz.cx = (int)lWidth;
+        sz.cy = (int)lHeight;
+        return sz;
+    }
 	// 多行非rich格式的richedit有一个滚动条bug，在最后一行是空行时，LineDown和SetScrollPos无法滚动到最后
 	// 引入iPos就是为了修正这个bug
 	void CRichEditUI::SetScrollPos(SIZE szPos, bool bMsg)
@@ -2042,6 +2073,11 @@ err:
 		{
 			return;
 		}
+
+		if( event.Type == UIEVENT_MOUSEENTER ) 
+		{
+			return;
+		}
 		if( event.Type == UIEVENT_BUTTONUP ) 
 		{
 			return;
@@ -2063,10 +2099,11 @@ err:
 		CControlUI::SetPos(rc, bNeedInvalidate);
 		rc = m_rcItem;
 
-		rc.left += m_rcInset.left;
-		rc.top += m_rcInset.top;
-		rc.right -= m_rcInset.right;
-		rc.bottom -= m_rcInset.bottom;
+		RECT rcInset = GetInset();
+		rc.left += rcInset.left;
+		rc.top += rcInset.top;
+		rc.right -= rcInset.right;
+		rc.bottom -= rcInset.bottom;
 
 		RECT rcScrollView = rc;
 		bool bVScrollBarVisiable = false;
@@ -2087,17 +2124,19 @@ err:
 		}
 
 		if( m_pTwh != NULL ) {
+			RECT rcTextPadding = GetTextPadding();
 			RECT rcScrollTextView = rcScrollView;
-			rcScrollTextView.left += m_rcTextPadding.left;
-			rcScrollTextView.right -= m_rcTextPadding.right;
-			rcScrollTextView.top += m_rcTextPadding.top;
-			rcScrollTextView.bottom -= m_rcTextPadding.bottom;
+			rcScrollTextView.left += rcTextPadding.left;
+			rcScrollTextView.right -= rcTextPadding.right;
+			rcScrollTextView.top += rcTextPadding.top;
+			rcScrollTextView.bottom -= rcTextPadding.bottom;
 			RECT rcText = rc;
-			rcText.left += m_rcTextPadding.left;
-			rcText.right -= m_rcTextPadding.right;
-			rcText.top += m_rcTextPadding.top;
-			rcText.bottom -= m_rcTextPadding.bottom;
+			rcText.left += rcTextPadding.left;
+			rcText.right -= rcTextPadding.right;
+			rcText.top += rcTextPadding.top;
+			rcText.bottom -= rcTextPadding.bottom;
 			m_pTwh->SetClientRect(&rcScrollTextView);
+
 			if( bVScrollBarVisiable && (!m_pVerticalScrollBar->IsVisible() || m_bVScrollBarFixing) ) {
 				LONG lWidth = rcText.right - rcText.left + m_pVerticalScrollBar->GetFixedWidth();
 				LONG lHeight = 0;
@@ -2159,10 +2198,11 @@ err:
 		CContainerUI::Move(szOffset, bNeedInvalidate);
 		if( m_pTwh != NULL ) {
 			RECT rc = m_rcItem;
-			rc.left += m_rcInset.left;
-			rc.top += m_rcInset.top;
-			rc.right -= m_rcInset.right;
-			rc.bottom -= m_rcInset.bottom;
+			RECT rcInset = GetInset();
+			rc.left += rcInset.left;
+			rc.top += rcInset.top;
+			rc.right -= rcInset.right;
+			rc.bottom -= rcInset.bottom;
 
 			if( m_pVerticalScrollBar && m_pVerticalScrollBar->IsVisible() ) rc.right -= m_pVerticalScrollBar->GetFixedWidth();
 			if( m_pHorizontalScrollBar && m_pHorizontalScrollBar->IsVisible() ) rc.bottom -= m_pHorizontalScrollBar->GetFixedHeight();
@@ -2218,10 +2258,11 @@ err:
 
 		if( m_items.GetSize() > 0 ) {
 			RECT rc = m_rcItem;
-			rc.left += m_rcInset.left;
-			rc.top += m_rcInset.top;
-			rc.right -= m_rcInset.right;
-			rc.bottom -= m_rcInset.bottom;
+			RECT rcInset = GetInset();
+			rc.left += rcInset.left;
+			rc.top += rcInset.top;
+			rc.right -= rcInset.right;
+			rc.bottom -= rcInset.bottom;
 			if( m_pVerticalScrollBar && m_pVerticalScrollBar->IsVisible() ) rc.right -= m_pVerticalScrollBar->GetFixedWidth();
 			if( m_pHorizontalScrollBar && m_pHorizontalScrollBar->IsVisible() ) rc.bottom -= m_pHorizontalScrollBar->GetFixedHeight();
 
@@ -2294,10 +2335,11 @@ err:
 			DWORD dwTextColor = GetTipValueColor();
 			CDuiString sTipValue = GetTipValue();
 			RECT rc = m_rcItem;
-			rc.left += m_rcTextPadding.left;
-			rc.right -= m_rcTextPadding.right;
-			rc.top += m_rcTextPadding.top;
-			rc.bottom -= m_rcTextPadding.bottom;
+			RECT rcTextPadding = GetTextPadding();
+			rc.left += rcTextPadding.left;
+			rc.right -= rcTextPadding.right;
+			rc.top += rcTextPadding.top;
+			rc.bottom -= rcTextPadding.bottom;
 			UINT uTextAlign = GetTipValueAlign();
 			if(IsMultiLine()) uTextAlign |= DT_TOP;
 			else uTextAlign |= DT_VCENTER;
@@ -2352,7 +2394,9 @@ err:
 
 	RECT CRichEditUI::GetTextPadding() const
 	{
-		return m_rcTextPadding;
+		RECT rcTextPadding = m_rcTextPadding;
+		if(m_pManager) m_pManager->GetDPIObj()->Scale(&rcTextPadding);
+		return rcTextPadding;
 	}
 
 	void CRichEditUI::SetTextPadding(RECT rc)
@@ -2561,6 +2605,9 @@ err:
 							bWasHandled = false;
 							return 0;
 						}
+						else {
+							break;
+						}
 					}
 					break;
 				}
@@ -2570,16 +2617,18 @@ err:
 			if( dwHitResult == HITRESULT_OUTSIDE ) {
 				RECT rc;
 				m_pTwh->GetControlRect(&rc);
+
 				POINT pt = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
 				if( uMsg == WM_SETCURSOR ) {
 					::GetCursorPos(&pt);
 					::ScreenToClient(GetManager()->GetPaintWindow(), &pt);
 				}
 				else if( uMsg == WM_MOUSEWHEEL ) ::ScreenToClient(GetManager()->GetPaintWindow(), &pt);
+
 				if( ::PtInRect(&rc, pt) && !GetManager()->IsCaptured() ) dwHitResult = HITRESULT_HIT;
 			}
 			if( dwHitResult != HITRESULT_HIT ) return 0;
-			if( uMsg == WM_SETCURSOR ) bWasHandled = false;
+			if( uMsg == WM_SETCURSOR || uMsg == WM_MOUSEMOVE ) bWasHandled = false;
 			else if( uMsg == WM_LBUTTONDOWN || uMsg == WM_LBUTTONDBLCLK || uMsg == WM_RBUTTONDOWN ) {
 				if (!GetManager()->IsNoActivate()) ::SetFocus(GetManager()->GetPaintWindow());
 				SetFocus();
@@ -2616,6 +2665,11 @@ err:
 		}
 #endif
 		else if( uMsg == WM_CONTEXTMENU ) {
+			// RichEdit是否支持右键菜单，使用menu属性来控制
+			if(!IsContextMenuUsed()) {
+				bWasHandled = false;
+				return 0;
+			}
 			POINT pt = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
 			::ScreenToClient(GetManager()->GetPaintWindow(), &pt);
 			CControlUI* pHover = GetManager()->FindControl(pt);

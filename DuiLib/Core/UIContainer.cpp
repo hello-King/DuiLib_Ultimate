@@ -17,7 +17,9 @@ namespace DuiLib
 		m_bMouseChildEnabled(true),
 		m_pVerticalScrollBar(NULL),
 		m_pHorizontalScrollBar(NULL),
-		m_nScrollStepSize(0)
+		m_nScrollStepSize(0),
+		m_bFixedScrollbar(false),
+		m_bShowScrollbar(true)
 	{
 		::ZeroMemory(&m_rcInset, sizeof(m_rcInset));
 	}
@@ -221,6 +223,30 @@ namespace DuiLib
 	void CContainerUI::SetMouseChildEnabled(bool bEnable)
 	{
 		m_bMouseChildEnabled = bEnable;
+	}
+	
+	bool CContainerUI::IsFixedScrollbar()
+	{
+		return m_bFixedScrollbar;
+	}
+
+	void CContainerUI::SetFixedScrollbar(bool bFixed)
+	{
+		m_bFixedScrollbar = bFixed;
+		Invalidate();
+	}
+
+	bool CContainerUI::IsShowScrollbar()
+	{
+		return m_bShowScrollbar;
+	}
+
+	void CContainerUI::SetShowScrollbar(bool bShow)
+	{
+		m_bShowScrollbar = bShow;
+		
+		if( m_pVerticalScrollBar != NULL ) m_pVerticalScrollBar->SetShow(bShow);
+		if( m_pHorizontalScrollBar != NULL ) m_pHorizontalScrollBar->SetShow(bShow);
 	}
 
 	void CContainerUI::SetVisible(bool bVisible)
@@ -516,7 +542,9 @@ namespace DuiLib
 	void CContainerUI::PageLeft()
 	{
 		SIZE sz = GetScrollPos();
-		int iOffset = m_rcItem.right - m_rcItem.left - m_rcInset.left - m_rcInset.right;
+
+		RECT rcInset = GetInset();
+		int iOffset = m_rcItem.right - m_rcItem.left - rcInset.left - rcInset.right;
 		if( m_pVerticalScrollBar && m_pVerticalScrollBar->IsVisible() ) iOffset -= m_pVerticalScrollBar->GetFixedWidth();
 		sz.cx -= iOffset;
 		SetScrollPos(sz);
@@ -525,7 +553,9 @@ namespace DuiLib
 	void CContainerUI::PageRight()
 	{
 		SIZE sz = GetScrollPos();
-		int iOffset = m_rcItem.right - m_rcItem.left - m_rcInset.left - m_rcInset.right;
+
+		RECT rcInset = GetInset();
+		int iOffset = m_rcItem.right - m_rcItem.left - rcInset.left - rcInset.right;
 		if( m_pVerticalScrollBar && m_pVerticalScrollBar->IsVisible() ) iOffset -= m_pVerticalScrollBar->GetFixedWidth();
 		sz.cx += iOffset;
 		SetScrollPos(sz);
@@ -559,6 +589,8 @@ namespace DuiLib
 				if( pDefaultAttributes ) {
 					m_pVerticalScrollBar->ApplyAttributeList(pDefaultAttributes);
 				}
+
+				m_pVerticalScrollBar->SetShow(m_bShowScrollbar);
 			}
 		}
 		else if( !bEnableVertical && m_pVerticalScrollBar ) {
@@ -577,6 +609,8 @@ namespace DuiLib
 				if( pDefaultAttributes ) {
 					m_pHorizontalScrollBar->ApplyAttributeList(pDefaultAttributes);
 				}
+
+				m_pHorizontalScrollBar->SetShow(m_bShowScrollbar);
 			}
 		}
 		else if( !bEnableHorizontal && m_pHorizontalScrollBar ) {
@@ -756,6 +790,8 @@ namespace DuiLib
 			else if( _tcscmp(pstrValue, _T("bottom")) == 0 ) m_iChildVAlign = DT_BOTTOM;
 		}
 		else if( _tcsicmp(pstrName, _T("scrollstepsize")) == 0 ) SetScrollStepSize(_ttoi(pstrValue));
+		else if (_tcsicmp(pstrName, _T("fixedscrollbar")) == 0) SetFixedScrollbar(_tcsicmp(pstrValue, _T("true")) == 0);
+		else if (_tcsicmp(pstrName, _T("showscrollbar")) == 0) SetShowScrollbar(_tcsicmp(pstrValue, _T("true")) == 0);
 		else CControlUI::SetAttribute(pstrName, pstrValue);
 	}
 

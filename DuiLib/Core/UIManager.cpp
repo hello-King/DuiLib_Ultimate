@@ -1,6 +1,10 @@
 #include "StdAfx.h"
 #include <zmouse.h>
 
+#pragma warning(push)
+#pragma warning(disable:4838 4244)
+
+
 namespace DuiLib {
 
 	/////////////////////////////////////////////////////////////////////////////////////
@@ -36,6 +40,8 @@ namespace DuiLib {
 		return uState;
 	}
 
+	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	///
 	typedef struct tagFINDTABINFO
 	{
 		CControlUI* pFocus;
@@ -60,6 +66,16 @@ namespace DuiLib {
 	} TIMERINFO;
 
 
+	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	///
+	tagTImageInfo::tagTImageInfo()
+	{
+		pImage = NULL;
+		hBitmap = NULL;
+	}
+
+	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	///
 	tagTDrawInfo::tagTDrawInfo()
 	{
 		Clear();
@@ -113,28 +129,35 @@ namespace DuiLib {
 						rcDest.top = _tcstol(pstr + 1, &pstr, 10);    ASSERT(pstr);    
 						rcDest.right = _tcstol(pstr + 1, &pstr, 10);  ASSERT(pstr);    
 						rcDest.bottom = _tcstol(pstr + 1, &pstr, 10); ASSERT(pstr);  
-						if(pManager != NULL) pManager->GetDPIObj()->Scale(&rcDest);
+						//if(pManager != NULL) pManager->GetDPIObj()->Scale(&rcDest);
 					}
 					else if( sItem == _T("source") ) {
 						rcSource.left = _tcstol(sValue.GetData(), &pstr, 10);  ASSERT(pstr);    
 						rcSource.top = _tcstol(pstr + 1, &pstr, 10);    ASSERT(pstr);    
 						rcSource.right = _tcstol(pstr + 1, &pstr, 10);  ASSERT(pstr);    
 						rcSource.bottom = _tcstol(pstr + 1, &pstr, 10); ASSERT(pstr);
-						if(pManager != NULL) pManager->GetDPIObj()->Scale(&rcSource);
+						//if(pManager != NULL) pManager->GetDPIObj()->Scale(&rcSource);
 					}
 					else if( sItem == _T("corner") ) {
 						rcCorner.left = _tcstol(sValue.GetData(), &pstr, 10);  ASSERT(pstr);    
 						rcCorner.top = _tcstol(pstr + 1, &pstr, 10);    ASSERT(pstr);    
 						rcCorner.right = _tcstol(pstr + 1, &pstr, 10);  ASSERT(pstr);    
 						rcCorner.bottom = _tcstol(pstr + 1, &pstr, 10); ASSERT(pstr);
-						if(pManager != NULL) pManager->GetDPIObj()->Scale(&rcCorner);
+						//if(pManager != NULL) pManager->GetDPIObj()->Scale(&rcCorner);
 					}
 					else if( sItem == _T("mask") ) {
 						if( sValue[0] == _T('#')) dwMask = _tcstoul(sValue.GetData() + 1, &pstr, 16);
 						else dwMask = _tcstoul(sValue.GetData(), &pstr, 16);
 					}
 					else if( sItem == _T("fade") ) {
-						uFade = (BYTE)_tcstoul(sValue.GetData(), &pstr, 10);
+						uFade = (UINT)_tcstoul(sValue.GetData(), &pstr, 10);
+					}
+					else if( sItem == _T("rotate") ) {
+						uRotate = (UINT)_tcstoul(sValue.GetData(), &pstr, 10);
+						bGdiplus = true;
+					}
+					else if( sItem == _T("gdiplus") ) {
+						bGdiplus = (_tcsicmp(sValue.GetData(), _T("true")) == 0);
 					}
 					else if( sItem == _T("hole") ) {
 						bHole = (_tcsicmp(sValue.GetData(), _T("true")) == 0);
@@ -160,7 +183,7 @@ namespace DuiLib {
 						rcPadding.top = _tcstol(pstr + 1, &pstr, 10);    ASSERT(pstr);    
 						rcPadding.right = _tcstol(pstr + 1, &pstr, 10);  ASSERT(pstr);    
 						rcPadding.bottom = _tcstol(pstr + 1, &pstr, 10); ASSERT(pstr);  
-						if(pManager != NULL) pManager->GetDPIObj()->Scale(&rcPadding);
+						//if(pManager != NULL) pManager->GetDPIObj()->Scale(&rcPadding);
 					}
 				}
 				if( *pStrImage++ != _T(' ') ) break;
@@ -185,17 +208,20 @@ namespace DuiLib {
 		memset(&rcCorner, 0, sizeof(RECT));
 		dwMask = 0;
 		uFade = 255;
+		uRotate = 0;
 		bHole = false;
 		bTiledX = false;
 		bTiledY = false;
 		bHSL = false;
+		bGdiplus = false;
 
 		szImage.cx = szImage.cy = 0;
 		sAlign.Empty();
 		memset(&rcPadding, 0, sizeof(RECT));
 	}
 
-	/////////////////////////////////////////////////////////////////////////////////////
+	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	///
 	typedef BOOL (__stdcall *PFUNCUPDATELAYEREDWINDOW)(HWND, HDC, POINT*, SIZE*, HDC, POINT*, COLORREF, BLENDFUNCTION*, DWORD);
 	PFUNCUPDATELAYEREDWINDOW g_fUpdateLayeredWindow = NULL;
 
@@ -207,6 +233,7 @@ namespace DuiLib {
 	CDuiString CPaintManagerUI::m_pStrResourceZipPwd;  //Garfield 20160325 带密码zip包解密
 	HANDLE CPaintManagerUI::m_hResourceZip = NULL;
 	bool CPaintManagerUI::m_bCachedResourceZip = true;
+	BYTE* CPaintManagerUI::m_cbZipBuf = nullptr;
 	int CPaintManagerUI::m_nResType = UILIB_FILE;
 	TResInfo CPaintManagerUI::m_SharedResInfo;
 	HINSTANCE CPaintManagerUI::m_hInstance = NULL;
@@ -233,6 +260,7 @@ namespace DuiLib {
 		m_pFocus(NULL),
 		m_pEventHover(NULL),
 		m_pEventClick(NULL),
+		m_pEventRClick(NULL),
 		m_pEventKey(NULL),
 		m_bFirstLayout(true),
 		m_bFocusNeeded(false),
@@ -305,6 +333,8 @@ namespace DuiLib {
 		Gdiplus::GdiplusStartup( &m_gdiplusToken, m_pGdiplusStartupInput, NULL); // 加载GDI接口
 
 		CShadowUI::Initialize(m_hInstance);
+
+		m_pDragDrop = NULL;
 	}
 
 	CPaintManagerUI::~CPaintManagerUI()
@@ -471,19 +501,30 @@ namespace DuiLib {
 			m_hResourceZip = NULL;
 		}
 		m_pStrResourceZip = _T("membuffer");
+        if (m_cbZipBuf)
+        {
+            delete[] m_cbZipBuf;
+            m_cbZipBuf = nullptr;
+        }
+        if (!m_cbZipBuf)
+        {
+            m_cbZipBuf = new BYTE[len];
+            memcpy(m_cbZipBuf, pVoid, len);
+        }
+
 		m_bCachedResourceZip = true;
 		m_pStrResourceZipPwd = password;  //Garfield 20160325 带密码zip包解密
 		if( m_bCachedResourceZip ) 
 		{
 #ifdef UNICODE
 			char* pwd = w2a((wchar_t*)password);
-			m_hResourceZip = (HANDLE)OpenZip(pVoid, len, pwd);
+			m_hResourceZip = (HANDLE)OpenZip(m_cbZipBuf, len, pwd);
 			if(pwd) {
 				delete[] pwd;
 				pwd = NULL;
 			}
 #else
-			m_hResourceZip = (HANDLE)OpenZip(pVoid, len, password);
+			m_hResourceZip = (HANDLE)OpenZip(m_cbZipBuf, len, password);
 #endif
 		}
 	}
@@ -650,9 +691,9 @@ namespace DuiLib {
 		}
 	}
 
-	RECT& CPaintManagerUI::GetSizeBox()
+	RECT CPaintManagerUI::GetSizeBox()
 	{
-		return m_rcSizeBox;
+		return GetDPIObj()->Scale(m_rcSizeBox);
 	}
 
 	void CPaintManagerUI::SetSizeBox(RECT& rcSizeBox)
@@ -660,9 +701,9 @@ namespace DuiLib {
 		m_rcSizeBox = rcSizeBox;
 	}
 
-	RECT& CPaintManagerUI::GetCaptionRect()
+	RECT CPaintManagerUI::GetCaptionRect()
 	{
-		return m_rcCaption;
+		return GetDPIObj()->Scale(m_rcCaption);
 	}
 
 	void CPaintManagerUI::SetCaptionRect(RECT& rcCaption)
@@ -670,9 +711,9 @@ namespace DuiLib {
 		m_rcCaption = rcCaption;
 	}
 
-	SIZE CPaintManagerUI::GetRoundCorner() const
+	SIZE CPaintManagerUI::GetRoundCorner()
 	{
-		return m_szRoundCorner;
+		return GetDPIObj()->Scale(m_szRoundCorner);
 	}
 
 	void CPaintManagerUI::SetRoundCorner(int cx, int cy)
@@ -681,9 +722,9 @@ namespace DuiLib {
 		m_szRoundCorner.cy = cy;
 	}
 
-	SIZE CPaintManagerUI::GetMinInfo() const
+	SIZE CPaintManagerUI::GetMinInfo()
 	{
-		return m_szMinWindow;
+		return GetDPIObj()->Scale(m_szMinWindow);
 	}
 
 	void CPaintManagerUI::SetMinInfo(int cx, int cy)
@@ -693,9 +734,9 @@ namespace DuiLib {
 		m_szMinWindow.cy = cy;
 	}
 
-	SIZE CPaintManagerUI::GetMaxInfo() const
+	SIZE CPaintManagerUI::GetMaxInfo()
 	{
-		return m_szMaxWindow;
+		return GetDPIObj()->Scale(m_szMaxWindow);
 	}
 
 	void CPaintManagerUI::SetMaxInfo(int cx, int cy)
@@ -705,7 +746,7 @@ namespace DuiLib {
 		m_szMaxWindow.cy = cy;
 	}
 
-	bool CPaintManagerUI::IsShowUpdateRect() const
+	bool CPaintManagerUI::IsShowUpdateRect()
 	{
 		return m_bShowUpdateRect;
 	}
@@ -841,13 +882,14 @@ namespace DuiLib {
 		return m_trh;
 	}
 
-	bool CPaintManagerUI::PreMessageHandler(UINT uMsg, WPARAM wParam, LPARAM lParam, LRESULT& /*lRes*/)
+	bool CPaintManagerUI::PreMessageHandler(UINT uMsg, WPARAM wParam, LPARAM lParam, LRESULT& lRes)
 	{
 		for( int i = 0; i < m_aPreMessageFilters.GetSize(); i++ ) 
 		{
 			bool bHandled = false;
 			LRESULT lResult = static_cast<IMessageFilterUI*>(m_aPreMessageFilters[i])->MessageHandler(uMsg, wParam, lParam, bHandled);
 			if( bHandled ) {
+				lRes = lResult;
 				return true;
 			}
 		}
@@ -863,7 +905,7 @@ namespace DuiLib {
 						return false;
 					}
 					SetNextTabControl(::GetKeyState(VK_SHIFT) >= 0);
-					return true;
+					return false;
 				}
 			}
 			break;
@@ -984,6 +1026,12 @@ namespace DuiLib {
 					event.pSender = m_pEventClick;
 					m_pEventClick->Event(event);
 				}
+                if (m_pEventRClick != NULL)
+                {
+                    event.Type = UIEVENT_RBUTTONUP;
+                    event.pSender = m_pEventClick;
+                    m_pEventRClick->Event(event);
+                }
 
 				SetFocus(NULL);
 
@@ -1453,7 +1501,15 @@ namespace DuiLib {
 				// 拖拽事件
 				if(bNeedDrag && m_bDragMode && wParam == MK_LBUTTON)
 				{
+					// 释放Capture
 					::ReleaseCapture();
+					// 接口
+					if(m_pDragDrop != NULL && m_pDragDrop->OnDragDrop(m_pEventClick)) {
+
+						m_bDragMode = false;
+						break;
+					}
+
 					CIDropSource* pdsrc = new CIDropSource;
 					if(pdsrc == NULL) return 0;
 					pdsrc->AddRef();
@@ -1466,13 +1522,14 @@ namespace DuiLib {
 					STGMEDIUM medium = {0};
 					fmtetc.dwAspect = DVASPECT_CONTENT;
 					fmtetc.lindex = -1;
-					//////////////////////////////////////
 					fmtetc.cfFormat = CF_BITMAP;
-					fmtetc.tymed = TYMED_GDI;			
-					medium.tymed = TYMED_GDI;
+					fmtetc.tymed = TYMED_GDI;
+
+					//////////////////////////////////////
 					HBITMAP hBitmap = (HBITMAP)OleDuplicateData(m_hDragBitmap, fmtetc.cfFormat, NULL);
 					medium.hBitmap = hBitmap;
-					pdobj->SetData(&fmtetc,&medium,FALSE);
+					pdobj->SetData(&fmtetc, &medium, FALSE);
+
 					//////////////////////////////////////
 					BITMAP bmap;
 					GetObject(hBitmap, sizeof(BITMAP), &bmap);
@@ -1502,6 +1559,7 @@ namespace DuiLib {
 					m_bDragMode = false;
 					break;
 				}
+
 				TEventUI event = { 0 };
 				event.ptMouse = pt;
 				event.wParam = wParam;
@@ -1595,7 +1653,7 @@ namespace DuiLib {
 				CControlUI* pControl = FindControl(pt);
 				if( pControl == NULL ) break;
 				if( pControl->GetManager() != this ) break;
-				SetCapture();
+				//SetCapture();
 				TEventUI event = { 0 };
 				event.Type = UIEVENT_DBLCLICK;
 				event.pSender = pControl;
@@ -1647,7 +1705,7 @@ namespace DuiLib {
 				event.wKeyState = (WORD)wParam;
 				event.dwTimestamp = ::GetTickCount();
 				pControl->Event(event);
-				m_pEventClick = pControl;
+				m_pEventRClick = pControl;
 			}
 			break;
 		case WM_RBUTTONUP:
@@ -1656,18 +1714,18 @@ namespace DuiLib {
 
 				POINT pt = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
 				m_ptLastMousePos = pt;
-				m_pEventClick = FindControl(pt);
-				if(m_pEventClick == NULL) break;
+				m_pEventRClick = FindControl(pt);
+				if(m_pEventRClick == NULL) break;
 
 				TEventUI event = { 0 };
 				event.Type = UIEVENT_RBUTTONUP;
-				event.pSender = m_pEventClick;
+				event.pSender = m_pEventRClick;
 				event.wParam = wParam;
 				event.lParam = lParam;
 				event.ptMouse = pt;
 				event.wKeyState = (WORD)wParam;
 				event.dwTimestamp = ::GetTickCount();
-				m_pEventClick->Event(event);
+				m_pEventRClick->Event(event);
 			}
 			break;
 		case WM_MBUTTONDOWN:
@@ -1717,19 +1775,19 @@ namespace DuiLib {
 				POINT pt = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
 				::ScreenToClient(m_hWndPaint, &pt);
 				m_ptLastMousePos = pt;
-				if( m_pEventClick == NULL ) break;
+				if( m_pEventRClick == NULL ) break;
 				ReleaseCapture();
 				TEventUI event = { 0 };
 				event.Type = UIEVENT_CONTEXTMENU;
-				event.pSender = m_pEventClick;
+				event.pSender = m_pEventRClick;
 				event.wParam = wParam;
 				event.lParam = lParam;
 				event.ptMouse = pt;
 				event.wKeyState = (WORD)wParam;
-				event.lParam = (LPARAM)m_pEventClick;
+				event.lParam = (LPARAM)m_pEventRClick;
 				event.dwTimestamp = ::GetTickCount();
-				m_pEventClick->Event(event);
-				m_pEventClick = NULL;
+				m_pEventRClick->Event(event);
+				m_pEventRClick = NULL;
 			}
 			break;
 		case WM_MOUSEWHEEL:
@@ -1908,6 +1966,11 @@ namespace DuiLib {
 		::InvalidateRect(m_hWndPaint, &rcItem, FALSE);
 	}
 
+	bool CPaintManagerUI::IsValid()
+	{
+		return m_hWndPaint != NULL && m_pRoot != NULL;
+	}
+
 	bool CPaintManagerUI::AttachDialog(CControlUI* pControl)
 	{
 		ASSERT(::IsWindow(m_hWndPaint));
@@ -1918,7 +1981,8 @@ namespace DuiLib {
 		SetFocus(NULL);
 		m_pEventKey = NULL;
 		m_pEventHover = NULL;
-		m_pEventClick = NULL;
+        m_pEventClick = NULL;
+        m_pEventRClick = NULL;
 		// Remove the existing control-tree. We might have gotten inside this function as
 		// a result of an event fired or similar, so we cannot just delete the objects and
 		// pull the internal memory of the calling code. We'll delay the cleanup.
@@ -1949,7 +2013,8 @@ namespace DuiLib {
 	{
 		if( pControl == m_pEventKey ) m_pEventKey = NULL;
 		if( pControl == m_pEventHover ) m_pEventHover = NULL;
-		if( pControl == m_pEventClick ) m_pEventClick = NULL;
+        if (pControl == m_pEventClick) m_pEventClick = NULL;
+        if (pControl == m_pEventRClick) m_pEventRClick = NULL;
 		if( pControl == m_pFocus ) m_pFocus = NULL;
 		KillTimer(pControl);
 		const CDuiString& sName = pControl->GetName();
@@ -2105,6 +2170,12 @@ namespace DuiLib {
 			CloseZip((HZIP)m_hResourceZip);
 			m_hResourceZip = NULL;
 		}
+
+        if (m_cbZipBuf)
+        {
+            delete[] m_cbZipBuf;
+            m_cbZipBuf = nullptr;
+        }
 	}
 
 	CDPI * DuiLib::CPaintManagerUI::GetDPIObj()
@@ -3178,11 +3249,11 @@ namespace DuiLib {
 		return data;
 	}
 
-	const TImageInfo* CPaintManagerUI::GetImageEx(LPCTSTR bitmap, LPCTSTR type, DWORD mask, bool bUseHSL, HINSTANCE instance)
+	const TImageInfo* CPaintManagerUI::GetImageEx(LPCTSTR bitmap, LPCTSTR type, DWORD mask, bool bUseHSL, bool bGdiplus, HINSTANCE instance)
 	{
 		const TImageInfo* data = GetImage(bitmap);
 		if( !data ) {
-			if( AddImage(bitmap, type, mask, bUseHSL, false, instance) ) {
+			if( AddImage(bitmap, type, mask, bUseHSL, bGdiplus, false, instance) ) {
 				if (m_bForceUseSharedRes) data = static_cast<TImageInfo*>(m_SharedResInfo.m_ImageHash.Find(bitmap));
 				else data = static_cast<TImageInfo*>(m_ResInfo.m_ImageHash.Find(bitmap)); 
 			}
@@ -3191,7 +3262,7 @@ namespace DuiLib {
 		return data;
 	}
 
-	const TImageInfo* CPaintManagerUI::AddImage(LPCTSTR bitmap, LPCTSTR type, DWORD mask, bool bUseHSL, bool bShared, HINSTANCE instance)
+	const TImageInfo* CPaintManagerUI::AddImage(LPCTSTR bitmap, LPCTSTR type, DWORD mask, bool bUseHSL, bool bGdiplus, bool bShared, HINSTANCE instance)
 	{
 		if( bitmap == NULL || bitmap[0] == _T('\0') ) return NULL;
 
@@ -3200,11 +3271,23 @@ namespace DuiLib {
 			if( isdigit(*bitmap) ) {
 				LPTSTR pstr = NULL;
 				int iIndex = _tcstol(bitmap, &pstr, 10);
-				data = CRenderEngine::LoadImage(iIndex, type, mask, instance);
+				
+				data = bGdiplus ? CRenderEngine::GdiplusLoadImage(iIndex, type, mask, instance) : CRenderEngine::LoadImage(iIndex, type, mask, instance);
 			}
 		}
 		else {
-			data = CRenderEngine::LoadImage(bitmap, NULL, mask, instance);
+			data = bGdiplus ? CRenderEngine::GdiplusLoadImage(bitmap, NULL, mask, instance) : CRenderEngine::LoadImage(bitmap, NULL, mask, instance);
+			if(!data) {
+				CDuiString sImageName = bitmap;
+				int iAtIdx = sImageName.ReverseFind(_T('@'));
+				int iDotIdx = sImageName.ReverseFind(_T('.'));
+				if(iAtIdx != -1 && iDotIdx != -1) {
+					CDuiString sExe = sImageName.Mid(iDotIdx);
+					sImageName = sImageName.Left(iAtIdx) + sExe;
+					data = bGdiplus ? CRenderEngine::GdiplusLoadImage(sImageName.GetData(), NULL, mask, instance) : CRenderEngine::LoadImage(sImageName.GetData(), NULL, mask, instance);
+				}
+			}
+
 		}
 
 		if( data == NULL ) {
@@ -3399,6 +3482,7 @@ namespace DuiLib {
 
 					CRenderEngine::FreeImage(data, false);
 					data->hBitmap = pNewData->hBitmap;
+					data->pImage = pNewData->pImage;
 					data->pBits = pNewData->pBits;
 					data->nX = pNewData->nX;
 					data->nY = pNewData->nY;
@@ -3466,9 +3550,8 @@ namespace DuiLib {
 
 	const TDrawInfo* CPaintManagerUI::GetDrawInfo(LPCTSTR pStrImage, LPCTSTR pStrModify)
 	{
-		CDuiString sStrImage = pStrImage;
-		CDuiString sStrModify = pStrModify;
-		CDuiString sKey = sStrImage + sStrModify;
+		CDuiString sKey;
+		sKey.Format(_T("%s%s"), pStrImage == NULL ? _T("") : pStrImage, pStrModify == NULL ? _T("") : pStrModify);
 		TDrawInfo* pDrawInfo = static_cast<TDrawInfo*>(m_ResInfo.m_DrawInfoHash.Find(sKey));
 		if(pDrawInfo == NULL && !sKey.IsEmpty()) {
 			pDrawInfo = new TDrawInfo();
@@ -3480,9 +3563,8 @@ namespace DuiLib {
 
 	void CPaintManagerUI::RemoveDrawInfo(LPCTSTR pStrImage, LPCTSTR pStrModify)
 	{
-		CDuiString sStrImage = pStrImage;
-		CDuiString sStrModify = pStrModify;
-		CDuiString sKey = sStrImage + sStrModify;
+		CDuiString sKey;
+		sKey.Format(_T("%s%s"), pStrImage == NULL ? _T("") : pStrImage, pStrModify == NULL ? _T("") : pStrModify);
 		TDrawInfo* pDrawInfo = static_cast<TDrawInfo*>(m_ResInfo.m_DrawInfoHash.Find(sKey));
 		if(pDrawInfo != NULL) {
 			m_ResInfo.m_DrawInfoHash.Remove(sKey);
@@ -4024,6 +4106,11 @@ namespace DuiLib {
 		return true;
 	}
 
+	void CPaintManagerUI::SetDragDrop(IDragDropUI* pDragDrop)
+	{
+		m_pDragDrop = pDragDrop;
+	}
+
 	static WORD DIBNumColors(void* pv) 
 	{     
 		int bits;     
@@ -4177,3 +4264,5 @@ namespace DuiLib {
 		return true; //let base free the medium
 	}
 } // namespace DuiLib
+
+#pragma warning(pop)
