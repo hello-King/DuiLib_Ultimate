@@ -436,12 +436,18 @@ err:
 		CScrollBarUI* pVerticalScrollBar = m_re->GetVerticalScrollBar();
 		CScrollBarUI* pHorizontalScrollBar = m_re->GetHorizontalScrollBar();
 		if( fnBar == SB_VERT && pVerticalScrollBar ) {
+			dwStyle |= ES_AUTOVSCROLL;
+			pserv->OnTxPropertyBitsChange(TXTBIT_SCROLLBARCHANGE, dwStyle);
 			pVerticalScrollBar->SetVisible(fShow == TRUE);
 		}
 		else if( fnBar == SB_HORZ && pHorizontalScrollBar ) {
+			dwStyle |= ES_AUTOHSCROLL;
+			pserv->OnTxPropertyBitsChange(TXTBIT_SCROLLBARCHANGE, dwStyle);
 			pHorizontalScrollBar->SetVisible(fShow == TRUE);
 		}
 		else if( fnBar == SB_BOTH ) {
+			dwStyle |= ES_AUTOVSCROLL | ES_AUTOHSCROLL;
+			pserv->OnTxPropertyBitsChange(TXTBIT_SCROLLBARCHANGE, dwStyle);
 			if( pVerticalScrollBar ) pVerticalScrollBar->SetVisible(fShow == TRUE);
 			if( pHorizontalScrollBar ) pHorizontalScrollBar->SetVisible(fShow == TRUE);
 		}
@@ -451,14 +457,23 @@ err:
 	BOOL CTxtWinHost::TxEnableScrollBar (INT fuSBFlags, INT fuArrowflags)
 	{
 		if( fuSBFlags == SB_VERT ) {
+			dwStyle |= ES_AUTOVSCROLL | WS_VSCROLL;
+			if(pserv) pserv->OnTxPropertyBitsChange(TXTBIT_SCROLLBARCHANGE, dwStyle);
+
 			m_re->EnableScrollBar(true, m_re->GetHorizontalScrollBar() != NULL);
 			m_re->GetVerticalScrollBar()->SetVisible(fuArrowflags != ESB_DISABLE_BOTH);
 		}
 		else if( fuSBFlags == SB_HORZ ) {
+			dwStyle |= ES_AUTOHSCROLL | WS_VSCROLL;
+			if(pserv) pserv->OnTxPropertyBitsChange(TXTBIT_SCROLLBARCHANGE, dwStyle);
+
 			m_re->EnableScrollBar(m_re->GetVerticalScrollBar() != NULL, true);
 			m_re->GetHorizontalScrollBar()->SetVisible(fuArrowflags != ESB_DISABLE_BOTH);
 		}
 		else if( fuSBFlags == SB_BOTH ) {
+			dwStyle |= ES_AUTOHSCROLL | WS_VSCROLL | WS_HSCROLL | ES_AUTOHSCROLL;
+			if(pserv) pserv->OnTxPropertyBitsChange(TXTBIT_SCROLLBARCHANGE, dwStyle);
+
 			m_re->EnableScrollBar(true, true);
 			m_re->GetVerticalScrollBar()->SetVisible(fuArrowflags != ESB_DISABLE_BOTH);
 			m_re->GetHorizontalScrollBar()->SetVisible(fuArrowflags != ESB_DISABLE_BOTH);
@@ -2478,15 +2493,19 @@ err:
 	{
 		if( _tcscmp(pstrName, _T("vscrollbar")) == 0 ) {
 			if( _tcscmp(pstrValue, _T("true")) == 0 ) m_lTwhStyle |= ES_DISABLENOSCROLL | WS_VSCROLL;
+			if(m_pTwh) m_pTwh->TxEnableScrollBar(SB_VERT, ESB_ENABLE_BOTH);
 		}
 		if( _tcscmp(pstrName, _T("autovscroll")) == 0 ) {
 			if( _tcscmp(pstrValue, _T("true")) == 0 ) m_lTwhStyle |= ES_AUTOVSCROLL;
+			if(m_pTwh) m_pTwh->TxShowScrollBar(SB_VERT, true);
 		}
 		else if( _tcscmp(pstrName, _T("hscrollbar")) == 0 ) {
 			if( _tcscmp(pstrValue, _T("true")) == 0 ) m_lTwhStyle |= ES_DISABLENOSCROLL | WS_HSCROLL;
+			if(m_pTwh) m_pTwh->TxEnableScrollBar(SB_HORZ, ESB_ENABLE_BOTH);
 		}
 		if( _tcscmp(pstrName, _T("autohscroll")) == 0 ) {
 			if( _tcscmp(pstrValue, _T("true")) == 0 ) m_lTwhStyle |= ES_AUTOHSCROLL;
+			if(m_pTwh) m_pTwh->TxShowScrollBar(SB_HORZ, true);
 		}
 		else if( _tcsicmp(pstrName, _T("multiline")) == 0 ) {
 			SetMultiLine(_tcscmp(pstrValue, _T("true")) == 0);
@@ -2507,7 +2526,10 @@ err:
 			SetRich(_tcscmp(pstrValue, _T("true")) == 0);
 		}
 		else if( _tcscmp(pstrName, _T("readonly")) == 0 ) {
-			if( _tcscmp(pstrValue, _T("true")) == 0 ) { m_lTwhStyle |= ES_READONLY; m_bReadOnly = true; }
+			if( _tcscmp(pstrValue, _T("true")) == 0 ) { 
+				m_lTwhStyle |= ES_READONLY; 
+				m_bReadOnly = true; 
+			}
 		}
 		else if( _tcscmp(pstrName, _T("password")) == 0 ) {
 			if( _tcscmp(pstrValue, _T("true")) == 0 ) m_lTwhStyle |= ES_PASSWORD;
